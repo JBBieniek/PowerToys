@@ -83,6 +83,7 @@
     <ClInclude Include="settings_store.h" />
     <ClInclude Include="settings_update_policy.h" />
     <ClInclude Include="settings.h" />
+    <ClInclude Include="shortcut_commands.h" />
     <ClInclude Include="touchpad_hid.h" />
     <ClInclude Include="touchpad_packets.h" />
     <ClInclude Include="touchpad_state.h" />

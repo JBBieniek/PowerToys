@@ -54,6 +54,9 @@
     <ClCompile Include="pointer_channel_tests.cpp" />
     <ClCompile Include="pointer_feedback_tests.cpp" />
     <ClCompile Include="pointer_motion_tests.cpp" />
+    <ClCompile Include="pointer_native_tests.cpp">
+      <AdditionalIncludeDirectories>pointer_mocks;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
     <ClCompile Include="settings_tests.cpp" />
     <ClCompile Include="shortcut_tests.cpp" />
     <ClCompile Include="touchpad_packets_tests.cpp" />
@@ -73,6 +76,8 @@
     <ClCompile Include="WheelActivationTests.cpp" />
     <ClCompile Include="PointerSpeedTests.cpp" />
     <ClCompile Include="PointerSpeedCompositionTests.cpp" />
+    <ClCompile Include="PointerNativeTests.cpp" />
+    <ClCompile Include="ShortcutCommandTests.cpp" />
     <ClCompile Include="ScopeIndicatorTests.cpp" />
     <ClCompile Include="IndicatorVisibilityTests.cpp" />
     <ClCompile Include="GpuShaderTests.cpp" />
