@@ -39,6 +39,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="gpu_monitor_magnifier.cpp" />
     <ClCompile Include="zoom_capture.cpp" />
+    <ClCompile Include="window_fit.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="control_channel.h" />
@@ -64,6 +65,7 @@
     <ClInclude Include="input_transport.h" />
     <ClInclude Include="magnification_api.h" />
     <ClInclude Include="monitor_geometry.h" />
+    <ClInclude Include="monitor_return.h" />
     <ClInclude Include="monitor_magnifier.h" />
     <ClInclude Include="monitor_presenter.h" />
     <ClInclude Include="monitor_visual.h" />
@@ -72,12 +74,14 @@
     <ClInclude Include="paint_pump_win32.h" />
     <ClInclude Include="pointer_adapter.h" />
     <ClInclude Include="pointer_channel.h" />
+    <ClInclude Include="pointer_dispatch.h" />
     <ClInclude Include="pointer_feedback.h" />
     <ClInclude Include="pointer_motion.h" />
     <ClInclude Include="powertoys_runtime.h" />
     <ClInclude Include="powertoys_settings.h" />
     <ClInclude Include="runtime_state.h" />
     <ClInclude Include="settings_store.h" />
+    <ClInclude Include="settings_update_policy.h" />
     <ClInclude Include="settings.h" />
     <ClInclude Include="touchpad_hid.h" />
     <ClInclude Include="touchpad_packets.h" />
@@ -88,6 +92,7 @@
     <ClInclude Include="viewport_motion.h" />
     <ClInclude Include="watchdog.h" />
     <ClInclude Include="window_class_lease.h" />
+    <ClInclude Include="window_fit.h" />
     <ClInclude Include="wheel_acceleration.h" />
     <ClInclude Include="wheel_activation.h" />
     <ClInclude Include="zoom_animation.h" />

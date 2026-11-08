@@ -6979,7 +6979,8 @@ Ctrl + Alt + Shift + Z: switch to linked monitors and toggle zoom
 Ctrl + Alt + I: switch to independent monitors and toggle zoom
 Ctrl + Alt + Esc: reset all zoom
 Ctrl + Alt + S: copy the zoomed view
-Ctrl + Alt + V: show the view indicator</value>
+Ctrl + Alt + V: show the view indicator
+Ctrl + Alt + Shift + F: fit the active resizable window to the current viewport</value>
   </data>
   <data name="GlideZoom_WheelModifier.Header" xml:space="preserve">
     <value>Mouse wheel modifier</value>

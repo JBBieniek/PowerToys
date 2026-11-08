@@ -1671,7 +1671,9 @@ bool GpuMonitorMagnifier::ReplacementVisibleAt(glide::Vec2 source) const noexcep
 
 bool GpuMonitorMagnifier::ReplacementVisibleNow() const noexcept
 {
-    if (!cursorEnabled_ || !impl_ || !impl_->prepared || impl_->staged || impl_->geometryInvalid || !impl_->gate.Ready() ||
+    if (!cursorEnabled_ || !impl_ || !impl_->prepared || impl_->staged || !impl_->pipelineReady ||
+        !impl_->hasSubmittedFrame || !impl_->presentationQueue.HasSubmittedFrame() ||
+        impl_->geometryInvalid || !impl_->gate.Ready() ||
         !Active() || !glide::OnInputDesktop())
         return false;
     const auto& state = *impl_;
@@ -1683,7 +1685,8 @@ bool GpuMonitorMagnifier::ReplacementVisibleNow() const noexcept
         MonitorFromPoint(physical, MONITOR_DEFAULTTONULL) != state.monitor)
         return false;
     const glide::Vec2 point{ static_cast<double>(physical.x), static_cast<double>(physical.y) };
-    return state.submittedCursor.Covers(state.frame, point, reinterpret_cast<std::uintptr_t>(information.hCursor), (information.flags & kCursorSuppressed) != 0) &&
+    return glide::monitor::SameFrame(state.frame, state.submittedFrame) &&
+           state.submittedCursor.Covers(state.submittedFrame, point, reinterpret_cast<std::uintptr_t>(information.hCursor), (information.flags & kCursorSuppressed) != 0) &&
            state.epoch == operation && state.prepared && !state.staged &&
            Active() && glide::OnInputDesktop();
 }

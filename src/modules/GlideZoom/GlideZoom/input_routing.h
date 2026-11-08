@@ -225,6 +225,7 @@ namespace glide::input::routing
             drag_ = {};
         }
         bool HasBlockedButtons() const noexcept { return blocked_ != 0; }
+        bool AnyButtonDown() const noexcept { return down_ != 0; }
         bool HasForwardedDrag() const noexcept { return snapshot_.enabled && forwarded_ != 0 && drag_.id != 0; }
         bool DragConstraint(Vec2 proposed, Route& output) const noexcept
         {

@@ -518,6 +518,106 @@ void CoverageLossDuringNativeHide()
             Cleanup(lease, world);
         }
 }
+// Compose the actual visibility lease, submitted cursor geometry and deferred
+// presentation queue. No new image or barrier acknowledgement is required to
+// restore the global cursor after leaving the active rendered view.
+void DeferredWorkAndRetainedCoverage()
+{
+    struct LiveWorld : World
+    {
+        glide::cursor::Presentation cursor;
+        glide::monitor::Frame frame{};
+        glide::Vec2 point{};
+        bool busy = false, queuedCopy = false, zoomed = true, active = true;
+        bool ReplacementVisible() const noexcept
+        {
+            return !busy && !queuedCopy && zoomed && active &&
+                   cursor.Covers(frame, point, 11, suppressed);
+        }
+    };
+    const glide::Rect bounds{ -1920, -1080, 0, 0 };
+    const glide::Vec2 inside{ -960, -540 }, outside{ 0, -540 };
+    const auto initialize = [&](LiveWorld& world) {
+        Check(glide::monitor::MakeFrame(bounds, glide::AnchorZoom({}, 2, inside, bounds), world.frame),
+              "deferred cursor fixture has a valid submitted zoom on a negative-origin monitor");
+        world.point = inside;
+        world.cursor.Commit(world.frame, 11);
+    };
+    for (unsigned reason = 0; reason < 4; ++reason)
+        for (const Failure failure : { Failure::None, Failure::Before, Failure::After })
+        {
+            ++scenarios;
+            LiveWorld world;
+            initialize(world);
+            glide::cursor::Lease lease;
+            Check(lease.UpdateCovered(true, false, world, world) && !lease.Hidden() && world.hides == 0,
+                  "an early visibility-only service cannot acquire a hide before a submitted frame is serviced");
+            Check(lease.UpdateCovered(true, true, world, world) && lease.Hidden() && !world.shown,
+                  "the active submitted GPU cursor acquires one global hide");
+            if (reason == 0)
+                world.queuedCopy = true;
+            if (reason == 1)
+                world.busy = true;
+            if (reason == 2)
+                world.zoomed = false;
+            if (reason == 3)
+                world.active = false;
+            world.showFailure = failure;
+            const bool released = lease.UpdateCovered(true, false, world, world);
+            Check(released == (failure == Failure::None) && !lease.Hidden() &&
+                      lease.NeedsRecovery() == (failure != Failure::None) && world.hides == 1,
+                  "queued capture, busy handoff, 1x and hidden overlays release immediately with failed restores still journaled");
+            world.showFailure = Failure::None;
+            world.point = outside;
+            glide::gpu::PresentationQueue queue;
+            Check(queue.Observe(glide::gpu::QueueSignal::Ready, 0) == glide::gpu::QueueDecision::Render && queue.Submitted(1),
+                  "old image remains submitted while the compositor is pending");
+            for (std::uint64_t tick = 2; tick < 2000; tick += 13)
+            {
+                Check(queue.Observe(glide::gpu::QueueSignal::Busy, tick) == glide::gpu::QueueDecision::Pending &&
+                          lease.UpdateCovered(true, false, world, world) && world.shown &&
+                          !lease.Hidden() && !lease.NeedsRecovery() && !world.armed && world.hides == 1,
+                      "arbitrarily repeated pending barrier ticks leave the real cursor visible on the unzoomed monitor");
+            }
+            world.queuedCopy = world.busy = false;
+            world.zoomed = world.active = true;
+            Check(lease.UpdateCovered(true, true, world, world) && world.shown && world.hides == 1,
+                  "completing handoff cannot reacquire outside the submitted zoom's physical monitor");
+            Cleanup(lease, world);
+        }
+    for (const Point boundary : { Point::DesktopAfter, Point::HideAfter })
+        for (const Failure failure : { Failure::None, Failure::Before, Failure::After })
+        {
+            ++scenarios;
+            LiveWorld world;
+            initialize(world);
+            glide::cursor::Lease lease;
+            if (boundary == Point::DesktopAfter)
+                Check(lease.UpdateCovered(true, true, world, world), "retained-lease race starts with an existing native hide");
+            world.showFailure = failure;
+            world.hookPoint = boundary;
+            world.hook = [&] { world.point = outside; };
+            const bool result = lease.UpdateCovered(true, true, world, world);
+            Check(world.hookFired && result == (failure == Failure::None) && !lease.Hidden() &&
+                      lease.NeedsRecovery() == (failure != Failure::None) && world.shows == 1,
+                  "fresh post-check restores crossing during initial hide or the retained-hide fast path in the same service call");
+            Cleanup(lease, world);
+        }
+    {
+        ++scenarios;
+        LiveWorld world;
+        initialize(world);
+        world.shown = false;
+        glide::cursor::Lease lease;
+        Check(lease.UpdateCovered(true, true, world, world) && !lease.NeedsRecovery(),
+              "a foreign-hidden baseline is never acquired by replacement maintenance");
+        world.queuedCopy = true;
+        world.point = outside;
+        Check(lease.UpdateCovered(true, false, world, world) && !world.shown && world.hides == 0 && world.shows == 0,
+              "early release preserves a cursor hidden by another app instead of forcing it visible");
+    }
+}
+
 std::uint64_t Next(std::uint64_t& seed)
 {
     seed ^= seed << 13; seed ^= seed >> 7; seed ^= seed << 17;
@@ -571,6 +671,7 @@ int Run_cursor_visibility() {
     PendingPresentationCursorCoverage();
     SubmittedCursorGeometryAndOtherMonitors();
     CoverageLossDuringNativeHide();
+    DeferredWorkAndRetainedCoverage();
     MixedSequences();
     std::cout << "PASS: " << assertions << " cursor visibility assertions; " << scenarios
               << " scenarios; 50000 mixed transitions; " << failures << " reached failures; "

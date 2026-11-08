@@ -4,10 +4,13 @@
 #include "CppUnitTest.h"
 #include "../GlideZoom/pointer_adapter.h"
 #include "../GlideZoom/pointer_channel.h"
+#include "../GlideZoom/pointer_dispatch.h"
+#include "../GlideZoom/control_channel.h"
 
 #include <array>
 #include <cmath>
 #include <limits>
+#include <string_view>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -30,13 +33,18 @@ namespace GlideZoomTests
         {
             glide::pointer::Adapter* adapter = nullptr;
             glide::Vec2 cursor{ 10000, 10000 };
-            bool canPlace = true, cancelWrite = false, enforceClip = false;
+            bool canPlace = true, cancelWrite = false, enforceClip = false, ready = true, warpSuccess = true, exactReadback = true;
             glide::Rect clip{ 0, 0, 40000, 40000 };
             unsigned writes = 0, reads = 0, checks = 0;
             bool Ready(const glide::pointer::View&) noexcept
             {
                 ++checks;
-                return true;
+                return ready;
+            }
+            bool DragBounds(const glide::pointer::View& view, glide::Rect& output) noexcept
+            {
+                output = enforceClip ? clip : view.bounds;
+                return ready;
             }
             bool Read(glide::Vec2& output) noexcept
             {
@@ -51,8 +59,12 @@ namespace GlideZoomTests
             bool Warp(glide::Vec2 point) noexcept
             {
                 ++writes;
+                if (!warpSuccess)
+                    return false;
                 cursor = point;
                 adapter->ObserveWarp(point);
+                if (!exactReadback)
+                    cursor.x += 1;
                 if (cancelWrite)
                     adapter->Pause();
                 return true;
@@ -226,6 +238,216 @@ namespace GlideZoomTests
                 glide::pointer::Step step{ { 123, 456 }, { 0.25, -0.25 } };
                 Assert::IsFalse(glide::pointer::Propose({ 100, 100 }, { 101, 100 }, {}, view, step));
                 Assert::IsTrue(glide::pointer::Same(step.point, { 123, 456 }) && glide::pointer::Same(step.remainder, { 0.25, -0.25 }));
+            }
+        }
+
+        TEST_METHOD (HookDispatchAppliesSpeedWithoutAButtonAndKeepsTheSameGainDuringAndAfterDrag)
+        {
+            using namespace glide;
+            input::ControlChannel controls;
+            input::ControlReader reader;
+            input::State gestures;
+            controls.Publish({ input::DefaultControlOptions | 1, 7, 4 });
+            Assert::IsTrue(reader.Synchronize(controls, gestures, [] { return true; }, [](input::Decision) {}));
+            input::routing::Snapshot routes;
+            routes.enabled = true;
+            routes.generation = 1;
+            routes.epoch = reader.Epoch();
+            routes.activeId = 1;
+            routes.count = 1;
+            routes.routes[0] = { 1, { 0, 0, 40000, 40000 }, { 7500, 7500, 17500, 17500 }, true };
+            input::routing::State routing;
+            routing.Observe(routes, true, reader.Epoch());
+            routing.ObservePoint({ 10000, 10000 });
+            input::PointerChannel pointerControls;
+            input::PointerSnapshot policy{ true, true, routes.routes[0].bounds, 4, 7, {}, 1, 0.25, true };
+            Assert::IsTrue(pointerControls.Publish(policy));
+            pointer::Adapter ordinary, drag;
+            SpeedNative native;
+            const auto move = [&](Vec2 candidate, std::uint64_t now) {
+                routing.Observe(routes, true, reader.Epoch());
+                routing.ObservePoint(candidate);
+                input::PointerSnapshot snapshot;
+                const bool coherent = pointerControls.Read(snapshot);
+                native.adapter = routing.HasForwardedDrag() ? &drag : &ordinary;
+                const auto decision = gestures.Move(candidate, now);
+                const bool consumed = input::DispatchPointer(candidate, now, snapshot, reader.Epoch(), coherent, (reader.Options() & 1) != 0, true, decision.consume, routing, ordinary, drag, native);
+                if (!consumed)
+                    native.cursor = candidate;
+                return consumed;
+            };
+            Assert::IsFalse(routing.HasForwardedDrag());
+            Assert::IsTrue(move({ 10016, 10000 }, 1));
+            SpeedNear(native.cursor.x, 10001);
+            Assert::IsTrue(ordinary.FeedbackSnapshot().valid && !drag.FeedbackSnapshot().valid);
+            Assert::IsFalse(gestures.ButtonEvent(input::Button::Left, true, native.cursor, 2).consume);
+            Assert::IsFalse(routing.Button(0, true, false));
+            ordinary.Pause();
+            drag.EndConstraint();
+            Assert::IsTrue(move({ 10017, 10000 }, 3));
+            SpeedNear(native.cursor.x, 10002);
+            Assert::IsTrue(drag.FeedbackSnapshot().valid);
+            Assert::IsFalse(gestures.ButtonEvent(input::Button::Left, false, native.cursor, 4).consume);
+            Assert::IsFalse(routing.Button(0, false, false));
+            ordinary.Pause();
+            drag.EndConstraint();
+            Assert::IsTrue(move({ 10018, 10000 }, 5));
+            SpeedNear(native.cursor.x, 10003);
+            Assert::IsFalse(routing.HasForwardedDrag());
+        }
+
+        TEST_METHOD (HookDispatchRevokesBothBaselinesWhenSharedControlsAreUnavailable)
+        {
+            using namespace glide;
+            input::routing::Snapshot routes;
+            routes.enabled = true;
+            routes.generation = 1;
+            routes.epoch = 7;
+            routes.activeId = 1;
+            routes.count = 1;
+            routes.routes[0] = { 1, { 0, 0, 40000, 40000 }, { 7500, 7500, 17500, 17500 }, true };
+            const input::PointerSnapshot policy{ true, true, routes.routes[0].bounds, 4, 7 };
+            for (unsigned unavailable = 0; unavailable < 5; ++unavailable)
+            {
+                input::routing::State routing;
+                routing.Observe(routes, true, 7);
+                routing.ObservePoint({ 10000, 10000 });
+                pointer::Adapter ordinary, drag;
+                SpeedNative native;
+                native.adapter = &ordinary;
+                Assert::IsTrue(input::DispatchPointer({ 10001, 10000 }, 1, policy, 7, true, true, true, false, routing, ordinary, drag, native));
+                Assert::IsFalse(routing.Button(0, true, false));
+                native.adapter = &drag;
+                Assert::IsTrue(input::DispatchPointer({ 10001, 10000 }, 2, policy, 7, true, true, true, false, routing, ordinary, drag, native));
+                Assert::IsTrue(ordinary.FeedbackSnapshot().valid && drag.FeedbackSnapshot().valid);
+                auto pending = routes;
+                pending.busy = unavailable == 4;
+                routing.Observe(pending, true, 7);
+                const auto checks = native.checks;
+                Assert::IsFalse(input::DispatchPointer({ 10002, 10000 }, 3, policy, unavailable == 0 ? 8 : 7, unavailable != 1, unavailable != 2, unavailable != 3, false, routing, ordinary, drag, native));
+                Assert::IsFalse(ordinary.FeedbackSnapshot().valid || drag.FeedbackSnapshot().valid);
+                Assert::IsTrue(native.checks == checks && !ordinary.Faulted() && !drag.Faulted());
+                Assert::IsFalse(routing.Button(0, false, true)); // The real forwarded UP still reaches its app.
+            }
+        }
+
+        TEST_METHOD (OrdinaryNativeFailureIsDistinguishableFromATransientPermissionPause)
+        {
+            using namespace glide;
+            input::routing::State routing;
+            routing.Observe({}, true, 7); // Selected/linked mode has no independent barrier.
+            const input::PointerSnapshot policy{ true, true, { 0, 0, 40000, 40000 }, 4, 7, {}, 1, 0.25, true };
+            pointer::Adapter ordinary, drag;
+            SpeedNative native;
+            native.adapter = &ordinary;
+            native.ready = false;
+            Assert::IsFalse(input::DispatchPointer({ 10016, 10000 }, 1, policy, 7, true, true, true, false, routing, ordinary, drag, native));
+            Assert::IsTrue(ordinary.FailureReason() == pointer::Failure::None);
+            native.ready = true;
+            Assert::IsTrue(input::DispatchPointer({ 10016, 10000 }, 2, policy, 7, true, true, true, false, routing, ordinary, drag, native));
+            SpeedNear(native.cursor.x, 10001);
+            native.warpSuccess = false;
+            Assert::IsFalse(input::DispatchPointer({ 10017, 10000 }, 3, policy, 7, true, true, true, false, routing, ordinary, drag, native));
+            Assert::IsTrue(ordinary.FailureReason() == pointer::Failure::Warp);
+            const auto writes = native.writes;
+            native.warpSuccess = true;
+            Assert::IsFalse(input::DispatchPointer({ 10017, 10000 }, 4, policy, 7, true, true, true, false, routing, ordinary, drag, native));
+            Assert::IsTrue(native.writes == writes && !ordinary.FeedbackSnapshot().valid);
+            Assert::IsTrue(std::wstring_view(pointer::FailureText(ordinary.FailureReason())).find(L"cursor write") != std::wstring_view::npos);
+            input::routing::Snapshot routes;
+            routes.enabled = true;
+            routes.generation = 1;
+            routes.epoch = 7;
+            routes.activeId = 1;
+            routes.count = 1;
+            routes.routes[0] = { 1, policy.bounds, { 7500, 7500, 17500, 17500 }, true };
+            routing.Observe(routes, true, 7);
+            routing.ObservePoint(native.cursor);
+            Assert::IsFalse(routing.Button(0, true, false));
+            native.adapter = &drag;
+            Assert::IsTrue(input::DispatchPointer({ 10017, 10000 }, 5, policy, 7, true, true, true, false, routing, ordinary, drag, native));
+            SpeedNear(native.cursor.x, 10002);
+            Assert::IsTrue(ordinary.Faulted() && drag.FeedbackSnapshot().valid);
+        }
+
+        TEST_METHOD (NativePointerFaultRecoversOnlyFromVerifiedIdleContextWithoutReplayingMotion)
+        {
+            using namespace glide;
+            for (const bool writeRejected : { false, true })
+            {
+                input::routing::State routing;
+                routing.Observe({}, true, 7);
+                input::PointerSnapshot policy{ true, true, { 0, 0, 40000, 40000 }, 4, 7, {}, 1, 0.25, true };
+                pointer::Adapter ordinary, drag;
+                SpeedNative native;
+                native.adapter = &ordinary;
+                const auto send = [&](Vec2 candidate, std::uint64_t now) {
+                    const bool consumed = input::DispatchPointer(candidate, now, policy, policy.epoch, true, true, true, false, routing, ordinary, drag, native);
+                    if (!consumed)
+                        native.cursor = candidate; // The original physical packet passes to Windows.
+                    return consumed;
+                };
+                native.warpSuccess = !writeRejected;
+                native.exactReadback = writeRejected;
+                Assert::IsFalse(send({ 10016, 10000 }, 1));
+                Assert::IsTrue(ordinary.FailureReason() == (writeRejected ? pointer::Failure::Warp : pointer::Failure::Readback));
+                native.warpSuccess = native.exactReadback = true;
+                const auto writes = native.writes;
+                Assert::IsFalse(input::RecoverPointer(500, policy, 7, true, true, true, true, routing, ordinary, native));
+                Assert::IsFalse(input::RecoverPointer(501, policy, 7, true, true, true, true, routing, ordinary, native));
+                Assert::IsFalse(input::RecoverPointer(550, policy, 7, true, true, true, true, routing, ordinary, native));
+                Assert::IsTrue(input::RecoverPointer(551, policy, 7, true, true, true, true, routing, ordinary, native));
+                Assert::IsTrue(native.writes == writes && pointer::Same(native.cursor, { 10016, 10000 }));
+                Assert::IsTrue(pointer::Same(ordinary.Remainder(), {}) && !ordinary.FeedbackSnapshot().valid);
+                Assert::IsTrue(send({ 10032, 10000 }, 552));
+                SpeedNear(native.cursor.x, 10017);
+                Assert::IsTrue(ordinary.FeedbackSnapshot().valid);
+                native.warpSuccess = false;
+                Assert::IsFalse(send({ 10033, 10000 }, 553));
+                native.warpSuccess = true;
+                Assert::IsFalse(input::RecoverPointer(2000, policy, 7, true, true, true, true, routing, ordinary, native));
+                Assert::IsTrue(ordinary.Faulted()); // Never repeatedly fight another owner in this epoch.
+                ++policy.epoch;
+                Assert::IsFalse(input::RecoverPointer(2000, policy, 8, true, true, true, true, routing, ordinary, native));
+                Assert::IsTrue(input::RecoverPointer(2050, policy, 8, true, true, true, true, routing, ordinary, native));
+            }
+        }
+
+        TEST_METHOD (PointerRecoveryRejectsHeldInputChangingCursorClipAndIncoherentControls)
+        {
+            using namespace glide;
+            const input::PointerSnapshot policy{ true, true, { 0, 0, 40000, 40000 }, 4, 7, {}, 1, 0.25, true };
+            for (unsigned blocked = 0; blocked < 9; ++blocked)
+            {
+                input::routing::State routing;
+                routing.Observe({}, true, 7);
+                routing.ObservePoint({ 10000, 10000 });
+                pointer::Adapter ordinary, drag;
+                SpeedNative native;
+                native.adapter = &ordinary;
+                native.warpSuccess = false;
+                Assert::IsFalse(input::DispatchPointer({ 10016, 10000 }, 1, policy, 7, true, true, true, false, routing, ordinary, drag, native));
+                native.warpSuccess = true;
+                if (blocked == 0)
+                    Assert::IsFalse(routing.Button(0, true, false));
+                native.ready = blocked != 1; // Represents native desktop/DPI/full-clip refusal.
+                native.canPlace = blocked != 8;
+                if (blocked == 2)
+                    native.cursor = { 40000, 10000 }; // Outside the active physical monitor.
+                const auto writes = native.writes;
+                Assert::IsFalse(input::RecoverPointer(600, policy, blocked == 3 ? 8 : 7, blocked != 4, blocked != 5, blocked != 6, blocked != 7, routing, ordinary, native));
+                Assert::IsFalse(input::RecoverPointer(700, policy, blocked == 3 ? 8 : 7, blocked != 4, blocked != 5, blocked != 6, blocked != 7, routing, ordinary, native));
+                Assert::IsTrue(ordinary.Faulted() && native.writes == writes);
+                if (blocked == 0)
+                    Assert::IsFalse(routing.Button(0, false, false));
+                native.ready = true;
+                native.canPlace = true;
+                native.cursor = { 10000, 10000 };
+                Assert::IsFalse(input::RecoverPointer(800, policy, 7, true, true, true, true, routing, ordinary, native));
+                native.cursor.x += 1;
+                Assert::IsFalse(input::RecoverPointer(850, policy, 7, true, true, true, true, routing, ordinary, native));
+                Assert::IsTrue(input::RecoverPointer(900, policy, 7, true, true, true, true, routing, ordinary, native));
+                Assert::IsTrue(native.writes == writes && !ordinary.Faulted());
             }
         }
     };

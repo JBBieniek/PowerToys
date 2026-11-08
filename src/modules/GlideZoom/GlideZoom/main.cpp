@@ -34,9 +34,11 @@
 #include "indicator_visibility.h"
 #include "magnification_api.h"
 #include "monitor_geometry.h"
+#include "monitor_return.h"
 #include "gpu_monitor_magnifier.h"
 #include "monitor_presenter.h"
 #include "settings_store.h"
+#include "settings_update_policy.h"
 #include "powertoys_runtime.h"
 #include "runtime_state.h"
 #include "watchdog.h"
@@ -50,6 +52,7 @@
 #include "tray_state.h"
 #include "ui_text_cache.h"
 #include "zoom_capture_win32.h"
+#include "window_fit.h"
 #include <common/logger/logger.h>
 #include <common/utils/logger_helper.h>
 
@@ -69,7 +72,7 @@ namespace
     constexpr int kToggleHotkey = 1, kResetHotkey = 2, kPlusHotkey = 3, kMinusHotkey = 4;
     constexpr int kDesktopHotkey = 5, kCaptureHotkey = 6;
     constexpr int kShiftPlusHotkey = 7, kNumpadPlusHotkey = 8, kNumpadMinusHotkey = 9;
-    constexpr int kIndependentHotkey = 10, kScopePreviewHotkey = 11;
+    constexpr int kIndependentHotkey = 10, kScopePreviewHotkey = 11, kFitViewportHotkey = 12;
     constexpr int kShow = 101, kToggle = 102, kResetCommand = 103, kPause = 104, kExit = 105;
     constexpr int kDesktopToggle = 106, kCaptureCommand = 107;
     constexpr int kIndependentToggle = 108;
@@ -305,7 +308,8 @@ namespace
         HINSTANCE instance_{};
         DWORD runnerPid_ = 0;
         glide::powertoys::Runner runner_;
-        bool runnerStopping_ = false, settingsReloadPending_ = false, settingsReloadResume_ = false;
+        bool runnerStopping_ = false, settingsReloadPending_ = false;
+        bool settingsApplyPending_ = false;
         bool scopeReloadPending_ = true;
         HWND hwnd_{}, status_{}, modifier_{}, maximum_{}, sensitivity_{}, zoomMultiplier_{}, edgePanMultiplier_{}, zoomScope_{}, pointerSpeed_{};
         HWND keyboardGesture_{}, mouseGesture_{}, touchpadGesture_{}, touchpadStatus_{}, reverse_{}, following_{}, pointerScaling_{};
@@ -318,13 +322,15 @@ namespace
         bool captureUserCancelled_ = false, deferredQuit_ = false, deferredReset_ = false;
         bool frameInProgress_ = false, nativeOperation_ = false, messageDuringOperation_ = false;
         bool drainingDeferred_ = false;
+        glide::pointer::Failure reportedPointerFailure_ = glide::pointer::Failure::None;
         bool quitReceived_ = false;
         int quitCode_ = 0;
         glide::tray::State tray_;
         glide::ui::TextCache statusText_, touchpadText_, trayTip_;
-        std::array<bool, 12> hotkeys_{};
+        std::array<bool, 13> hotkeys_{};
         glide::runtime::State lifecycle_;
         glide::settings::Values settings_;
+        glide::settings::Values pendingSettings_;
         glide::settings::Store settingsStore_;
         MagnificationApi mag_;
         glide::cursor::Lease cursor_;
@@ -332,6 +338,7 @@ namespace
         std::unique_ptr<GpuMonitorMagnifier> monitor_ = std::make_unique<GpuMonitorMagnifier>();
         glide::view::State view_;
         glide::session::Session session_;
+        glide::window_fit::NativeOperation windowFit_;
         glide::watchdog::Guardian guardian_;
         glide::input::Host input_;
         glide::Rect desktop_{};
@@ -484,7 +491,7 @@ namespace
 
         void ReleaseHotkeys() noexcept
         {
-            for (int id = kToggleHotkey; id <= kScopePreviewHotkey; ++id)
+            for (int id = kToggleHotkey; id <= kFitViewportHotkey; ++id)
             {
                 if (hotkeys_[id])
                     UnregisterHotKey(hwnd_, id);
@@ -554,9 +561,10 @@ namespace
                 hotkeys_[kNumpadMinusHotkey] = RegisterShortcut(kNumpadMinusHotkey, MOD_CONTROL | MOD_ALT, VK_SUBTRACT, L"Ctrl+Alt+Num-");
                 hotkeys_[kIndependentHotkey] = RegisterShortcut(kIndependentHotkey, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, 'I', L"Ctrl+Alt+I (independent monitors)");
                 hotkeys_[kScopePreviewHotkey] = RegisterShortcut(kScopePreviewHotkey, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, 'V', L"Ctrl+Alt+V (scope indicator)");
+                hotkeys_[kFitViewportHotkey] = RegisterShortcut(kFitViewportHotkey, MOD_CONTROL | MOD_ALT | MOD_SHIFT | MOD_NOREPEAT, 'F', L"Ctrl+Alt+Shift+F (fit active window)");
                 if (!hotkeys_[kToggleHotkey] || !hotkeys_[kPlusHotkey] || !hotkeys_[kMinusHotkey] ||
                     !hotkeys_[kDesktopHotkey] || !hotkeys_[kCaptureHotkey] || !hotkeys_[kShiftPlusHotkey] ||
-                    !hotkeys_[kNumpadPlusHotkey] || !hotkeys_[kNumpadMinusHotkey] || !hotkeys_[kIndependentHotkey] || !hotkeys_[kScopePreviewHotkey])
+                    !hotkeys_[kNumpadPlusHotkey] || !hotkeys_[kNumpadMinusHotkey] || !hotkeys_[kIndependentHotkey] || !hotkeys_[kScopePreviewHotkey] || !hotkeys_[kFitViewportHotkey])
                     QueueError(L"An optional zoom or copy-view shortcut is already in use and was left with its current owner. "
                                L"The wheel, drag gesture, tray controls and emergency reset remain available.");
             }
@@ -879,6 +887,10 @@ namespace
             handoffSerial_ = serial;
             viewLoadedForHandoff_ = alreadyLoaded;
             routingBusy_ = true;
+            // The old replacement stops owning the global cursor as soon as
+            // handoff begins, even if the hook barrier takes arbitrarily long.
+            if (!UpdateCursor(false))
+                return false;
             handoffPreviousEpoch_ = lifecycle_.Epoch();
             CancelInput();
             return PublishRouting(true);
@@ -1028,6 +1040,10 @@ namespace
                 auto requested = precise_;
                 if (requested.zoom != target_ && !zoomAnchor_.At(target_, monitorBounds_, requested))
                     return false;
+                if (!glide::monitor::Contains(monitorBounds_, afterLoad.point))
+                    return true; // A later routing observation will select the new monitor.
+                if (!glide::monitor_return::RevealEntry(requested, monitorBounds_, afterLoad.point, requested))
+                    return false;
                 glide::monitor::Frame frame{};
                 if (!glide::monitor::MakeFrame(monitorBounds_, requested, frame))
                     return false;
@@ -1048,6 +1064,12 @@ namespace
                     current.requestSerial != feedback.requestSerial ||
                     current.targetId != feedback.targetId)
                     return true;
+                glide::Vec2 physical{};
+                if (!CursorSource(physical))
+                    return false;
+                if (!glide::monitor::Contains(glide::monitor::AsRect(frame.source), current.point) ||
+                    !glide::monitor::Contains(glide::monitor::AsRect(frame.source), physical))
+                    return true; // Retry with the latest entry before admitting clicks.
                 const glide::session::Snapshot desired{ { 1, 0, 0 }, { true, frame.source, frame.destination } };
                 const auto applied = session_.Apply(desired, backend, guardian_);
                 if ((applied != glide::session::Result::Applied && applied != glide::session::Result::Unchanged) ||
@@ -1056,6 +1078,9 @@ namespace
                     return false;
                 precise_ = requested;
                 transform_ = frame.transform;
+                zoomAnchor_.Reset();
+                if (!zoomAnchor_.Set(precise_, current.point, monitorBounds_))
+                    return false;
             }
             else
             {
@@ -1493,6 +1518,7 @@ namespace
 
         bool Reset() noexcept
         {
+            windowFit_.Abandon();
             if (captureRequested_ || nativeOperation_ || messageDuringOperation_)
             {
                 // A sent message can reenter from a native capture or magnifier
@@ -1598,15 +1624,12 @@ namespace
             QueueError(message.c_str());
         }
 
-        bool UpdateCursor() noexcept
+        bool UpdateCursor(bool allowAcquire = true) noexcept
         {
             NativeOperation operation{ nativeOperation_ };
             const auto epoch = lifecycle_.Epoch();
-            glide::Vec2 source{};
-            const bool replacement = lifecycle_.Ready() && MonitorMode() &&
-                                     !routingBusy_ &&
-                                     glide::animation::Magnified(transform_.zoom) && monitor_->Active() &&
-                                     CursorSource(source) && monitor_->ReplacementVisibleAt(source) && lifecycle_.Accept(epoch);
+            if (!allowAcquire && !cursor_.NeedsRecovery())
+                return true;
             struct CursorBackend
             {
                 App& owner;
@@ -1614,6 +1637,14 @@ namespace
                 glide::cursor::NativeBackend native;
                 bool coverageLost = false;
                 bool OnInputDesktop() const noexcept { return native.OnInputDesktop(); }
+                bool ReplacementVisible() const noexcept
+                {
+                    return owner.lifecycle_.Ready() && owner.lifecycle_.Accept(epoch) && owner.MonitorMode() &&
+                           !owner.routingBusy_ && !owner.queuedCopy_ && !owner.captureBusy_ && !owner.captureRequested_ &&
+                           !owner.deferredReset_ && !owner.deferredQuit_ &&
+                           glide::animation::Magnified(owner.transform_.zoom) &&
+                           owner.monitor_->ReplacementVisibleNow() && owner.lifecycle_.Accept(epoch);
+                }
                 bool CursorShowing(bool& showing) const noexcept
                 {
                     return owner.lifecycle_.Accept(epoch) && native.CursorShowing(showing) &&
@@ -1622,14 +1653,14 @@ namespace
                 bool ShowSystemCursor(bool show) noexcept
                 {
                     // Restoring the cursor remains permitted after cancellation.
-                    if (!show && owner.lifecycle_.Accept(epoch) && !owner.monitor_->ReplacementVisibleNow())
+                    if (!show && owner.lifecycle_.Accept(epoch) && !ReplacementVisible())
                     {
                         coverageLost = true;
                         return false;
                     }
                     if ((!show && !owner.lifecycle_.Accept(epoch)) || !native.ShowSystemCursor(show))
                         return false;
-                    if (!show && !owner.monitor_->ReplacementVisibleNow())
+                    if (!show && !ReplacementVisible())
                     {
                         // A normal monitor crossing can race the hide. Lease
                         // immediately restores the global cursor in this case.
@@ -1639,7 +1670,7 @@ namespace
                     return show || owner.lifecycle_.Accept(epoch);
                 }
             } backend{ *this, epoch, glide::cursor::NativeBackend{ mag_ } };
-            const bool result = cursor_.Update(replacement, backend, guardian_);
+            const bool result = cursor_.UpdateCovered(true, allowAcquire, backend, guardian_);
             if (!lifecycle_.Accept(epoch))
             {
                 const bool released = cursor_.Release(backend, guardian_);
@@ -2000,6 +2031,11 @@ namespace
                 // this busy publication and all previously forwarded drags end.
                 queuedCopy_ = true;
                 captureUserCancelled_ = false;
+                if (!UpdateCursor(false))
+                {
+                    CursorFailure();
+                    return;
+                }
                 CancelInput();
                 if (!PublishRouting(true))
                 {
@@ -2101,6 +2137,14 @@ namespace
         {
             if (cleaned_ || quitReceived_ || frameInProgress_ || captureRequested_ || nativeOperation_ || messageDuringOperation_)
                 return true;
+            // Visibility is not tied to the camera clock. A routing wake or
+            // pending copy must restore the real cursor even when no new image
+            // is due, before settings IO, session checks or GPU preparation.
+            if (!UpdateCursor(false))
+            {
+                CursorFailure();
+                return true;
+            }
             if (runnerStopping_)
                 return true;
             if (runner_.ExitRequested())
@@ -2113,12 +2157,20 @@ namespace
                 }
                 return true;
             }
-            if (!settingsReloadPending_ && runner_.SettingsChanged())
+            if (settingsApplyPending_)
             {
-                settingsReloadResume_ = lifecycle_.Current() == Phase::Ready ||
-                                        (lifecycle_.Current() == Phase::Suspended && lifecycle_.ResumeRequested());
-                settingsReloadPending_ = true;
+                try
+                {
+                    ApplyPendingSettings();
+                }
+                catch (...)
+                {
+                    UnexpectedFault();
+                    return false;
+                }
             }
+            if (!settingsReloadPending_ && runner_.SettingsChanged())
+                settingsReloadPending_ = true;
             if (settingsReloadPending_)
             {
                 try
@@ -2169,6 +2221,8 @@ namespace
             const ULONGLONG now = GetTickCount64();
             const ULONGLONG elapsed = now - lastTick_;
             lastTick_ = now;
+            if (windowFit_.Pending())
+                ReportWindowFit(windowFit_.Poll(now));
             if (lifecycle_.Current() == Phase::Stopping)
                 return;
             if (lifecycle_.Current() == Phase::Faulted)
@@ -2181,6 +2235,12 @@ namespace
             {
                 UnexpectedFault(L"The input hook thread or recovery guardian stopped unexpectedly.");
                 return;
+            }
+            const auto pointerFailure = input_.PointerFailureReason();
+            if (pointerFailure != reportedPointerFailure_)
+            {
+                reportedPointerFailure_ = pointerFailure;
+                Diagnostic(glide::pointer::FailureText(pointerFailure), pointerFailure != glide::pointer::Failure::None);
             }
             if (!glide::OnInputDesktop())
             {
@@ -2232,6 +2292,11 @@ namespace
             if (MonitorMode() && selectedMonitor_ && !MonitorStillValid())
             {
                 Suspend();
+                return;
+            }
+            if (!UpdateCursor(false))
+            {
+                CursorFailure();
                 return;
             }
             if (queuedCopy_)
@@ -2456,6 +2521,72 @@ namespace
             return control;
         }
 
+        void ReportWindowFit(const glide::window_fit::Result& result) noexcept
+        {
+            if (result.reason == glide::window_fit::Reason::Pending || result.reason == glide::window_fit::Reason::Idle)
+                return;
+            const auto* text = glide::window_fit::ReasonText(result.reason);
+            Diagnostic(text, result.reason != glide::window_fit::Reason::Fitted);
+            if (cleaned_ || tray_.Stopping() || !tray_.Registered())
+                return;
+            auto icon = TrayIcon();
+            icon.uFlags = NIF_INFO;
+            icon.dwInfoFlags = NIIF_INFO | NIIF_RESPECT_QUIET_TIME;
+            wcscpy_s(icon.szInfoTitle, L"GlideZoom - fit window");
+            wcsncpy_s(icon.szInfo, text, _TRUNCATE);
+            Shell_NotifyIconW(NIM_MODIFY, &icon);
+        }
+
+        void FitWindowToViewport() noexcept
+        {
+            using Reason = glide::window_fit::Reason;
+            const auto refuse = [&](Reason reason) { glide::window_fit::Result result{}; result.reason = reason; ReportWindowFit(result); };
+            if (windowFit_.Pending() || routingBusy_ || captureBusy_ || captureRequested_ || queuedCopy_ || drag_.active)
+            {
+                refuse(Reason::Busy);
+                return;
+            }
+            if (!lifecycle_.Ready() || deferredReset_ || deferredQuit_ || !glide::OnInputDesktop() ||
+                !glide::animation::Magnified(transform_.zoom) || !session_.OwnsState())
+            {
+                refuse(Reason::InvalidViewport);
+                return;
+            }
+            // Use only the native state and frame currently owned and presented.
+            // Targets, camera animation state and capture overscan are not viewports.
+            glide::frame::Lease lease{ lifecycle_ };
+            glide::frame::Backend<MagnificationApi> backend{ mag_, lease };
+            NativeOperation native{ nativeOperation_ };
+            const auto checked = session_.Check(backend, guardian_);
+            if (!lease.Valid() || checked != glide::session::Result::Unchanged || !session_.OwnsState())
+            {
+                refuse(Reason::ContextChanged);
+                return;
+            }
+            const glide::session::Snapshot snapshot = session_.Expected();
+            if (!snapshot.input.enabled || !glide::session::Valid(snapshot))
+            {
+                refuse(Reason::InvalidViewport);
+                return;
+            }
+            if (MonitorMode())
+            {
+                glide::monitor::Frame frame{};
+                if (!monitor_->TryGetPresentedFrame(frame) || !monitor_->Matches(frame) ||
+                    !(snapshot.input.source == frame.source) || !(snapshot.input.destination == frame.destination) ||
+                    !monitor_->CanRetainVisual(frame) || !lease.Valid())
+                {
+                    refuse(Reason::ContextChanged);
+                    return;
+                }
+            }
+            const auto& source = snapshot.input.source;
+            const auto& destination = snapshot.input.destination;
+            const RECT sourceRect{ source.left, source.top, source.right, source.bottom };
+            const RECT monitorRect{ destination.left, destination.top, destination.right, destination.bottom };
+            ReportWindowFit(windowFit_.Begin(hwnd_, GetCurrentProcessId(), sourceRect, monitorRect, GetTickCount64(), [](void* context) noexcept { return static_cast<glide::frame::Lease*>(context)->Valid(); }, &lease));
+        }
+
         void CreateControls()
         {
             statusText_.Invalidate();
@@ -2574,7 +2705,7 @@ namespace
 
         void SaveControls()
         {
-            if (runnerPid_)
+            if (runnerPid_ || settingsApplyPending_)
                 return;
             if (lifecycle_.Current() != Phase::Ready && lifecycle_.Current() != Phase::Paused)
                 return;
@@ -2632,24 +2763,17 @@ namespace
             candidate.reverse = SendMessageW(reverse_, BM_GETCHECK, 0, 0) == BST_CHECKED;
             candidate.centerFollow = SendMessageW(following_, BM_GETCHECK, 0, 0) == BST_CHECKED;
             candidate.pointerScaling = SendMessageW(pointerScaling_, BM_GETCHECK, 0, 0) == BST_CHECKED;
-            const bool resume = lifecycle_.Current() == Phase::Ready;
-            lifecycle_.Pause();
-            ReleaseHotkeys();
-            if (!Reset())
-                return;
-            // No new input is reserved and no zoom is owned during synchronous disk IO.
-            const auto result = settingsStore_.Save(candidate);
+            glide::settings::SaveResult result;
+            {
+                // Freeze native reentry during disk IO without releasing a verified view.
+                NativeOperation operation{ nativeOperation_ };
+                result = settingsStore_.Save(candidate);
+            }
             if (result == glide::settings::SaveResult::Saved)
             {
-                scopeReloadPending_ = scopeReloadPending_ || settings_.zoomScope != candidate.zoomScope;
-                settings_ = candidate;
-            }
-            if (resume)
-                EnableControls();
-            else
-            {
-                ApplyPreferredScope();
-                ConfigureInput();
+                pendingSettings_ = candidate;
+                settingsApplyPending_ = true;
+                ApplyPendingSettings();
             }
             UpdateStatus();
             if (result == glide::settings::SaveResult::ChangedOutside)
@@ -2691,49 +2815,130 @@ namespace
             }
         }
 
-        bool ReloadSettings()
+        glide::settings::update::Context SettingsUpdateContext() const noexcept
         {
-            lifecycle_.Pause();
-            ReleaseHotkeys();
-            // Release every owned transform before reading a replacement configuration.
-            if (!Reset())
+            glide::settings::update::Context context;
+            context.safeBoundary = !cleaned_ && !quitReceived_ && !lifecycle_.Terminal() &&
+                                   (lifecycle_.Current() == Phase::Ready || lifecycle_.Current() == Phase::Paused) &&
+                                   !lifecycle_.NeedsRestore() && !routingBusy_ && !captureBusy_ && !captureRequested_ &&
+                                   !queuedCopy_ && !deferredReset_ && !deferredQuit_ && !nativeOperation_ &&
+                                   !frameInProgress_ && !messageDuringOperation_;
+            context.scopePending = scopeReloadPending_;
+            for (const double zoom : { transform_.zoom, precise_.zoom, target_, rawTarget_ })
+                glide::settings::update::ObserveZoom(context, zoom);
+            for (const auto& item : parkedViews_)
+                for (const double zoom : { item.applied.zoom, item.precise.zoom, item.target, item.rawTarget })
+                    glide::settings::update::ObserveZoom(context, zoom);
+            return context;
+        }
+
+        bool ApplySettingsCandidate(const glide::settings::Values& candidate)
+        {
+            using Action = glide::settings::update::Action;
+            const auto action = glide::settings::update::Classify(settings_, candidate, SettingsUpdateContext());
+            if (action == Action::Invalid)
+                return true; // Invalid input never reaches the live configuration.
+            if (action == Action::Unchanged)
+                return true;
+            if (action == Action::Defer)
                 return false;
-            glide::settings::Values candidate;
-            const auto loaded = settingsStore_.Load(candidate);
-            if (loaded == glide::settings::LoadResult::Loaded)
+            if (action == Action::Restore)
             {
+                // Only scope or a ceiling below an existing camera needs restoration.
+                // Derive resume now: an older request must not override a user pause.
+                const bool resume = lifecycle_.Ready();
+                lifecycle_.Pause();
+                ReleaseHotkeys();
+                if (!Reset() || cleaned_ || lifecycle_.Terminal() || deferredQuit_)
+                    return false;
                 scopeReloadPending_ = scopeReloadPending_ || settings_.zoomScope != candidate.zoomScope;
                 settings_ = candidate;
-                SendMessageW(modifier_, CB_SETCURSEL, settings_.modifier, 0);
-                const auto maxima = std::array<int, 4>{ 2, 4, 8, 16 };
-                const auto maximum = std::find(maxima.begin(), maxima.end(), settings_.maxZoom) - maxima.begin();
-                SendMessageW(maximum_, CB_SETCURSEL, static_cast<WPARAM>(maximum), 0);
-                SendMessageW(sensitivity_, CB_SETCURSEL, settings_.sensitivity, 0);
-                SendMessageW(zoomScope_, CB_SETCURSEL, settings_.zoomScope, 0);
-                SetWindowTextW(zoomMultiplier_, std::to_wstring(settings_.zoomMultiplier).c_str());
-                SetWindowTextW(edgePanMultiplier_, std::to_wstring(settings_.edgePanMultiplier).c_str());
-                SetWindowTextW(pointerSpeed_, std::to_wstring(settings_.pointerSpeed).c_str());
-                SendMessageW(keyboardGesture_, BM_SETCHECK, settings_.keyboardGesture ? BST_CHECKED : BST_UNCHECKED, 0);
-                SendMessageW(mouseGesture_, BM_SETCHECK, settings_.mouseGesture ? BST_CHECKED : BST_UNCHECKED, 0);
-                SendMessageW(touchpadGesture_, BM_SETCHECK, settings_.touchpadGesture ? BST_CHECKED : BST_UNCHECKED, 0);
-                SendMessageW(reverse_, BM_SETCHECK, settings_.reverse ? BST_CHECKED : BST_UNCHECKED, 0);
-                SendMessageW(following_, BM_SETCHECK, settings_.centerFollow ? BST_CHECKED : BST_UNCHECKED, 0);
-                SendMessageW(pointerScaling_, BM_SETCHECK, settings_.pointerScaling ? BST_CHECKED : BST_UNCHECKED, 0);
+                if (!ApplyPreferredScope())
+                    return false;
+                if (resume)
+                    EnableControls();
+                else
+                    ConfigureInput();
+                return true;
+            }
+            const bool inputChanged = glide::settings::update::InputChanged(settings_, candidate);
+            settings_ = candidate;
+            if (inputChanged)
+            {
+                // Cancel old gesture math, retaining submitted cameras and physical
+                // forwarded-button ownership in the hook. No mapping is released.
+                for (auto& item : parkedViews_)
+                    item.following.Reset();
+                CancelInput();
+            }
+            else
+                ConfigureInput();
+            UpdateIndicator(*monitor_, indicator_, transform_);
+            for (auto& item : parkedViews_)
+                UpdateIndicator(*item.renderer, item.indicator, item.applied);
+            return true;
+        }
+
+        void ApplyPendingSettings()
+        {
+            if (!settingsApplyPending_)
+                return;
+            if (cleaned_ || lifecycle_.Terminal() || deferredQuit_)
+            {
+                settingsApplyPending_ = false;
+                return;
+            }
+            if (ApplySettingsCandidate(pendingSettings_))
+            {
+                settingsApplyPending_ = false;
+                RefreshControls();
+                UpdateStatus();
+            }
+        }
+
+        bool ReloadSettings()
+        {
+            if (cleaned_ || lifecycle_.Terminal() || deferredQuit_)
+                return true;
+            if (!SettingsUpdateContext().safeBoundary)
+                return false;
+            glide::settings::Values candidate;
+            glide::settings::LoadResult loaded;
+            {
+                NativeOperation operation{ nativeOperation_ };
+                loaded = settingsStore_.Load(candidate);
+            }
+            if (loaded == glide::settings::LoadResult::Loaded)
+            {
+                if (!ApplySettingsCandidate(candidate))
+                    return false;
+                RefreshControls();
             }
             else
             {
                 QueueError(L"PowerToys settings could not be read as a complete valid configuration. The previous configuration remains active.");
             }
-            if (settingsReloadResume_)
-                EnableControls();
-            else
-            {
-                if (!ApplyPreferredScope())
-                    return false;
-                ConfigureInput();
-            }
             UpdateStatus();
             return true;
+        }
+
+        void RefreshControls()
+        {
+            SendMessageW(modifier_, CB_SETCURSEL, settings_.modifier, 0);
+            const auto maxima = std::array<int, 4>{ 2, 4, 8, 16 };
+            const auto maximum = std::find(maxima.begin(), maxima.end(), settings_.maxZoom) - maxima.begin();
+            SendMessageW(maximum_, CB_SETCURSEL, static_cast<WPARAM>(maximum), 0);
+            SendMessageW(sensitivity_, CB_SETCURSEL, settings_.sensitivity, 0);
+            SendMessageW(zoomScope_, CB_SETCURSEL, settings_.zoomScope, 0);
+            SetWindowTextW(zoomMultiplier_, std::to_wstring(settings_.zoomMultiplier).c_str());
+            SetWindowTextW(edgePanMultiplier_, std::to_wstring(settings_.edgePanMultiplier).c_str());
+            SetWindowTextW(pointerSpeed_, std::to_wstring(settings_.pointerSpeed).c_str());
+            SendMessageW(keyboardGesture_, BM_SETCHECK, settings_.keyboardGesture ? BST_CHECKED : BST_UNCHECKED, 0);
+            SendMessageW(mouseGesture_, BM_SETCHECK, settings_.mouseGesture ? BST_CHECKED : BST_UNCHECKED, 0);
+            SendMessageW(touchpadGesture_, BM_SETCHECK, settings_.touchpadGesture ? BST_CHECKED : BST_UNCHECKED, 0);
+            SendMessageW(reverse_, BM_SETCHECK, settings_.reverse ? BST_CHECKED : BST_UNCHECKED, 0);
+            SendMessageW(following_, BM_SETCHECK, settings_.centerFollow ? BST_CHECKED : BST_UNCHECKED, 0);
+            SendMessageW(pointerScaling_, BM_SETCHECK, settings_.pointerScaling ? BST_CHECKED : BST_UNCHECKED, 0);
         }
 
         NOTIFYICONDATAW TrayIcon() const noexcept
@@ -2829,7 +3034,7 @@ namespace
             wchar_t text[180]{};
             const wchar_t* scope = IndependentMode() ? L"Independent monitors" : MonitorMode() ? L"Selected monitor (one view)" :
                                                                                                  L"All monitors together";
-            swprintf_s(text, L"%ls  |  %.2fx  |  %ls%ls", phase, transform_.zoom, scope, PointerAdjustmentRequested() && input_.PointerFaulted() ? L"  |  Pointer adjustment OFF: restart GlideZoom" : L"");
+            swprintf_s(text, L"%ls  |  %.2fx  |  %ls%ls", phase, transform_.zoom, scope, PointerAdjustmentRequested() && input_.PointerFaulted() ? L"  |  Pointer adjustment paused" : L"");
             statusText_.Update(reinterpret_cast<std::uintptr_t>(status_), text, [&]() { return SetWindowTextW(status_, text) != FALSE; });
             const auto touchpad = input_.TouchpadStatus();
             const wchar_t* touchpadText = !settings_.touchpadGesture                                  ? L"Three-finger gesture: disabled" :
@@ -3016,6 +3221,8 @@ namespace
                             CopyZoomedView();
                         else if (wParam == kScopePreviewHotkey)
                             RevealScopeIndicator();
+                        else if (wParam == kFitViewportHotkey)
+                            FitWindowToViewport();
                     }
                 }
                 return 0;

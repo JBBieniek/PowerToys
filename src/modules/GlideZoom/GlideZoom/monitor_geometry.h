@@ -105,6 +105,13 @@ namespace glide::monitor
             const double visibleHigh = visibleLow + size / zoom;
             auto inputLow = static_cast<std::int32_t>(std::clamp(std::round(visibleLow), low, high));
             auto inputHigh = static_cast<std::int32_t>(std::clamp(std::round(visibleHigh), low, high));
+            // The exclusive input edge must retain the final physical source
+            // pixel whenever that pixel is visible. At fractional zoom, output
+            // quantization can leave visibleHigh less than half a pixel past it;
+            // nearest rounding would otherwise make that edge unreachable.
+            // Derive this from applied geometry so frame replay stays identical.
+            if (visibleHigh > high - 1)
+                inputHigh = static_cast<std::int32_t>(high);
             if (inputHigh <= inputLow)
             {
                 // A subpixel visible span still needs a nonempty integer input RECT.

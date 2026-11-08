@@ -39,6 +39,25 @@ namespace glide::cursor
         bool NeedsRecovery() const noexcept { return recovery_; }
         bool Hidden() const noexcept { return hidden_; }
 
+        // A rendered replacement is a revocable prerequisite, including while
+        // retaining an existing hide. The owner also calls this before deferred
+        // handoff/capture work with acquisition disabled, so an early return can
+        // never extend global hiding onto an ordinary, unzoomed monitor.
+        // Backend additionally supplies a fresh ReplacementVisible() check.
+        template<class Backend, class Journal>
+        bool UpdateCovered(bool eligible, bool allowAcquire, Backend& backend, Journal& journal) noexcept
+        {
+            if (!eligible || (!allowAcquire && !hidden_) || !backend.ReplacementVisible())
+                return Release(backend, journal);
+            const bool result = Update(true, backend, journal);
+            // Update's retained-hide fast path does not issue a native hide.
+            // Recheck coverage anyway: the physical pointer can have crossed a
+            // monitor edge since the first check, even without a new GPU frame.
+            if (hidden_ && !backend.ReplacementVisible())
+                return Release(backend, journal);
+            return result;
+        }
+
         template<class Backend, class Journal>
         bool Update(bool wantHidden, Backend& backend, Journal& journal) noexcept
         {

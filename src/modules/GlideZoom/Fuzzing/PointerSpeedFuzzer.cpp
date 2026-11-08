@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE in the project root.
 
 #include "../GlideZoom/pointer_motion.h"
+#include "../GlideZoom/pointer_dispatch.h"
 
 #include <algorithm>
 #include <cmath>
@@ -12,6 +13,63 @@
 
 namespace
 {
+    void Recovery(const std::uint8_t* data, std::size_t size)
+    {
+        using namespace glide;
+        struct Native
+        {
+            Vec2 point{ 10000, 10000 };
+            bool ready = true;
+            unsigned writes = 0;
+            bool Ready(const pointer::View&) const noexcept { return ready; }
+            bool Read(Vec2& output) const noexcept
+            {
+                output = point;
+                return true;
+            }
+            bool DragBounds(const pointer::View& view, Rect& output) const noexcept
+            {
+                output = view.bounds;
+                return ready;
+            }
+            bool CanPlace(Vec2) const noexcept { return true; }
+            bool Warp(Vec2) noexcept
+            {
+                ++writes;
+                return false;
+            }
+        } native;
+        pointer::Adapter ordinary, drag;
+        input::routing::State routing;
+        routing.Observe({}, true, 7);
+        input::PointerSnapshot policy{ true, true, { 0, 0, 40000, 40000 }, 4, 7, {}, 1, 0.25, true };
+        if (input::DispatchPointer({ 10016, 10000 }, 1, policy, 7, true, true, true, false, routing, ordinary, drag, native) ||
+            ordinary.FailureReason() != pointer::Failure::Warp)
+            std::abort();
+        bool recovered = false;
+        for (std::size_t at = 0; at + 1 < size && at < 64; at += 2)
+        {
+            const auto bits = data[at];
+            const std::uint64_t now = 501 + at * 50;
+            native.ready = (bits & 1) == 0;
+            native.point.x = 10000 + data[at + 1];
+            const auto writes = native.writes;
+            const bool accepted = input::RecoverPointer(now, policy, 7, (bits & 2) == 0, (bits & 4) == 0, (bits & 8) == 0, (bits & 16) == 0, routing, ordinary, native);
+            if (native.writes != writes ||
+                (accepted && (recovered || (bits & 31) != 0 || ordinary.Faulted() || ordinary.FeedbackSnapshot().valid ||
+                              !pointer::Same(ordinary.Remainder(), {}))))
+                std::abort();
+            if (accepted)
+            {
+                recovered = true;
+                const Vec2 candidate{ native.point.x + 16, native.point.y };
+                if (input::DispatchPointer(candidate, now + 1, policy, 7, true, true, true, false, routing, ordinary, drag, native) ||
+                    ordinary.FailureReason() != pointer::Failure::Warp)
+                    std::abort();
+            }
+        }
+    }
+
     // Independent one-dimensional travel-budget oracle. Native displacement is
     // spent in pixels before entry, source pixels/gain within, then pixels after
     // exit. It does not use the production ray/slab intersection implementation.
@@ -44,6 +102,7 @@ void FuzzPointerSpeed(const std::uint8_t* data, std::size_t size)
 {
     using namespace glide;
     size = (std::min)(size, std::size_t{ 16384 });
+    Recovery(data, size);
     for (std::size_t at = 0; at + 7 < size && at < 4096; at += 8)
     {
         pointer::View view{ true, true, { -1000, -1000, 1000, 1000 }, 1, 7 };

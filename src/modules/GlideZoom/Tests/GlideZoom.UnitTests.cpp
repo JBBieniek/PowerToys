@@ -28,6 +28,7 @@ int Run_view_mode();
 int Run_viewport_motion();
 int Run_zoom_precision();
 int Run_zoom_session();
+int Run_window_fit();
 
 namespace GlideZoomTests
 {
@@ -172,6 +173,11 @@ namespace GlideZoomTests
         TEST_METHOD (zoom_session)
         {
             RunPortableSuite([] { return Run_zoom_session(); });
+        }
+
+        TEST_METHOD (window_fit)
+        {
+            RunPortableSuite([] { return Run_window_fit(); });
         }
     };
 }

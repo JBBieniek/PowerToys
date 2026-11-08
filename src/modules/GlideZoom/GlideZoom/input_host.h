@@ -11,6 +11,7 @@
 #include "touchpad_state.h"
 #include "pointer_adapter.h"
 #include "pointer_channel.h"
+#include "pointer_dispatch.h"
 #include "wheel_activation.h"
 
 #include <windows.h>
@@ -142,6 +143,7 @@ namespace glide::input
         bool ReadRoutingFeedback(routing::Feedback& feedback) const noexcept { return routingFeedback_.Read(feedback); }
         void UpdatePointer(const PointerSnapshot& snapshot) noexcept { pointerPublication_.Publish(snapshot); }
         bool PointerFaulted() const noexcept { return pointerFault_.load(std::memory_order_acquire); }
+        pointer::Failure PointerFailureReason() const noexcept { return pointerFailure_.load(std::memory_order_acquire); }
         bool ReadPointerFeedback(pointer::Feedback& output) const noexcept
         {
             if (!Healthy() || stopping_.load(std::memory_order_acquire))
@@ -187,6 +189,18 @@ namespace glide::input
             if (pointer_.InWarp() || dragPointer_.InWarp())
                 return;
             pointerFault_.store(pointer_.Faulted(), std::memory_order_release);
+            const auto failure = pointer_.FailureReason();
+            pointerFailure_.store(failure, std::memory_order_release);
+            if (failure != lastPointerFailure_)
+            {
+                if (failure != pointer::Failure::None)
+                {
+                    OutputDebugStringW(L"GlideZoom: ");
+                    OutputDebugStringW(pointer::FailureText(failure));
+                    OutputDebugStringW(L"\n");
+                }
+                lastPointerFailure_ = failure;
+            }
             const bool eligible = pointerControlsCoherent_ && InputGate(GetTickCount64()) &&
                                   state_.Active() == Gesture::None && !touchpadState_.Active();
             pointerFeedback_.Publish(eligible ? (routing_.HasForwardedDrag() ? dragPointer_.FeedbackSnapshot() : pointer_.FeedbackSnapshot()) : pointer::Feedback{});
@@ -486,6 +500,12 @@ namespace glide::input
                 pendingHook_ = pendingTravel_ = 0;
             }
             FlushDelta();
+            if (pointer_.Faulted())
+            {
+                PointerSnapshot snapshot;
+                const bool coherent = pointerControlsCoherent_ && pointerPublication_.Read(snapshot);
+                RecoverPointer(now, snapshot, controls_.Epoch(), coherent, (controls_.Options() & 1) != 0, InputGate(now), !OtherInputHeld(), routing_, pointer_, pointerNative_);
+            }
         }
 
         void Synchronize(std::uint64_t now, const Vec2* physical = nullptr)
@@ -690,24 +710,8 @@ namespace glide::input
                 if (decision.consume)
                     return true;
                 PointerSnapshot snapshot;
-                if (!pointerControlsCoherent_ || !pointerPublication_.Read(snapshot) ||
-                    snapshot.epoch != controls_.Epoch() || (controls_.Options() & 1) == 0 || !InputGate(now))
-                {
-                    pointer_.Pause();
-                    return false;
-                }
-                const pointer::View view{ snapshot.requested, snapshot.active, snapshot.bounds, snapshot.zoom, snapshot.epoch, snapshot.offset, routing_.HasForwardedDrag() ? 1 : snapshot.edgePanMultiplier, snapshot.speedMultiplier, snapshot.adjustForZoom };
-                bool consume = false;
-                if (routing_.HasForwardedDrag())
-                {
-                    pointer::DragNative<pointer::NativeOps> native{ pointerNative_ };
-                    if (native.Initialize(view))
-                        consume = dragPointer_.Move(point, false, now, view, true, state_.Active() != Gesture::None, native);
-                    else
-                        dragPointer_.Pause();
-                }
-                else
-                    consume = pointer_.Move(point, false, now, view, true, state_.Active() != Gesture::None, pointerNative_);
+                const bool coherent = pointerControlsCoherent_ && pointerPublication_.Read(snapshot);
+                const bool consume = DispatchPointer(point, now, snapshot, controls_.Epoch(), coherent, (controls_.Options() & 1) != 0, InputGate(now), state_.Active() != Gesture::None, routing_, pointer_, dragPointer_, pointerNative_);
                 pointerFault_.store(pointer_.Faulted(), std::memory_order_release);
                 return consume;
             }
@@ -1131,6 +1135,7 @@ namespace glide::input
         HHOOK keyboard_ = nullptr, mouse_ = nullptr;
         std::atomic<bool> ready_{ false }, fault_{ false }, stopping_{ false };
         std::atomic<bool> pointerFault_{ false };
+        std::atomic<pointer::Failure> pointerFailure_{ pointer::Failure::None };
         std::atomic<std::uint64_t> uiBeat_{ 0 }, hostBeat_{ 0 };
         std::atomic<TouchpadAvailability> touchpadStatus_{ TouchpadAvailability::Disabled };
         ControlChannel publication_{};
@@ -1155,6 +1160,7 @@ namespace glide::input
         pointer::Adapter pointer_{};
         pointer::Adapter dragPointer_{};
         pointer::NativeOps pointerNative_{};
+        pointer::Failure lastPointerFailure_ = pointer::Failure::None;
         bool pointerControlsCoherent_ = false, controlsCoherent_ = false;
         double zoom_ = 1;
         ControlReader controls_{};

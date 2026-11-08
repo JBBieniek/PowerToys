@@ -37,10 +37,30 @@ namespace glide::pointer
         Failed
     };
 
+    inline constexpr const wchar_t* FailureText(Failure reason) noexcept
+    {
+        switch (reason)
+        {
+        case Failure::Geometry:
+            return L"Pointer adjustment stopped: invalid pointer geometry or gain.";
+        case Failure::Warp:
+            return L"Pointer adjustment stopped: Windows rejected the physical cursor write.";
+        case Failure::Readback:
+            return L"Pointer adjustment stopped: the cursor write could not be verified or another owner moved it.";
+        case Failure::Clock:
+            return L"Pointer adjustment stopped: pointer event time moved backwards.";
+        case Failure::Generation:
+            return L"Pointer adjustment stopped: the cancellation generation was exhausted.";
+        default:
+            return L"Pointer adjustment has no latched native failure.";
+        }
+    }
+
     // A hook-thread-only, allocation-free adapter. Native callbacks and cursor
     // ownership cannot be proven by portable tests. Temporary desktop, clipping
-    // or cursor-owner changes pause and reseed; uncertain native writes stop this
-    // feature for the process. In particular an ordinary fast move must not
+    // or cursor-owner changes pause and reseed; uncertain native writes suspend
+    // adjustment until bounded read-only recovery or a new control epoch. In
+    // particular an ordinary fast move must not
     // permanently turn compensation off.
     // It never owns a button/key, never injects one, and never restores a stale
     // cursor position on failure, pause, reset or exit.
@@ -134,6 +154,66 @@ namespace glide::pointer
                 failure_ = Failure::None;
                 Pause();
             }
+        }
+
+        // Read-only probation for an uncertain native write. This never warps,
+        // restores an old location, or carries pre-failure fractional motion.
+        // The Host permits it only while controls are current and input is idle.
+        // One rearm per epoch bounds contention with another cursor owner.
+        template<class Native>
+        bool Recover(std::uint64_t now, const View& view, bool permitted, Native& native) noexcept
+        {
+            if ((failure_ != Failure::Warp && failure_ != Failure::Readback) || inWarp_ ||
+                !permitted || !view.requested || !view.active || view.zoom <= 1 || !Valid(view) ||
+                pauseVersion_ == (std::numeric_limits<std::uint64_t>::max)() ||
+                now < failedAt_ || now - failedAt_ < RecoveryCooldownMs ||
+                (recoveredInEpoch_ && recoveredEpoch_ == view.epoch))
+            {
+                recoveryProbe_ = false;
+                return false;
+            }
+            for (auto& echo : echoes_)
+            {
+                if (!echo.valid)
+                    continue;
+                if (now < echo.at || now - echo.at <= EchoLeaseMs)
+                {
+                    recoveryProbe_ = false;
+                    return false;
+                }
+                echo.valid = false;
+            }
+            const auto version = pauseVersion_;
+            Vec2 observed{}, confirmed{};
+            if (!native.Ready(view) || !native.Read(observed) || !ValidPoint(observed) || !Contains(view.bounds, observed) || !native.CanPlace(observed) ||
+                !native.Ready(view) || !native.Read(confirmed) || !Same(observed, confirmed) ||
+                pauseVersion_ != version)
+            {
+                recoveryProbe_ = false;
+                return false;
+            }
+            const bool samePolicy = recoveryView_.epoch == view.epoch && Same(recoveryView_.bounds, view.bounds) &&
+                                    recoveryView_.zoom == view.zoom && Same(recoveryView_.offset, view.offset) &&
+                                    recoveryView_.edgePanMultiplier == view.edgePanMultiplier &&
+                                    recoveryView_.speedMultiplier == view.speedMultiplier && recoveryView_.adjustForZoom == view.adjustForZoom;
+            if (!recoveryProbe_ || !samePolicy || recoveryVersion_ != version ||
+                !Same(recoveryPoint_, observed) || now < recoveryAt_)
+            {
+                recoveryProbe_ = true;
+                recoveryPoint_ = observed;
+                recoveryView_ = view;
+                recoveryVersion_ = version;
+                recoveryAt_ = now;
+                return false;
+            }
+            if (now - recoveryAt_ < RecoveryStableMs)
+                return false;
+            failure_ = Failure::None;
+            Pause();
+            recoveryProbe_ = false;
+            recoveredInEpoch_ = true;
+            recoveredEpoch_ = view.epoch;
+            return true;
         }
 
         // Native must supply:
@@ -339,12 +419,16 @@ namespace glide::pointer
             if (!warped)
             {
                 slot->valid = false;
+                failedAt_ = now;
                 return Fail(Failure::Warp);
             }
             if (synchronousEcho_)
                 slot->valid = false;
             if (!read || !Same(observed, step.point))
+            {
+                failedAt_ = now;
                 return Fail(Failure::Readback);
+            }
             // A nested desktop/configuration/gesture cancellation may have run
             // during a native call. Do not resurrect its discarded fractional
             // state or consume the original move after that cancellation.
@@ -364,6 +448,7 @@ namespace glide::pointer
         // Excess pressure only passes one event and discards its motion history;
         // it never allocates, spins, or disables gain for the whole process.
         static constexpr std::uint64_t EchoLeaseMs = 64, BaselineLeaseMs = 250;
+        static constexpr std::uint64_t RecoveryCooldownMs = 500, RecoveryStableMs = 50;
         std::array<Echo, 1024> echoes_{};
         View view_{};
         Vec2 expected_{}, remainder_{}, warpPoint_{};
@@ -371,9 +456,14 @@ namespace glide::pointer
         Failure failure_ = Failure::None;
         bool seeded_ = false, inWarp_ = false, synchronousEcho_ = false;
         bool feedbackValid_ = false;
+        View recoveryView_{};
+        Vec2 recoveryPoint_{};
+        std::uint64_t failedAt_ = 0, recoveryAt_ = 0, recoveryVersion_ = 0, recoveredEpoch_ = 0;
+        bool recoveryProbe_ = false, recoveredInEpoch_ = false;
 
         bool Fail(Failure reason) noexcept
         {
+            recoveryProbe_ = false;
             failure_ = reason;
             Pause();
             return false;

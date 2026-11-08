@@ -63,12 +63,16 @@
     <ClCompile Include="viewport_motion_tests.cpp" />
     <ClCompile Include="zoom_precision_tests.cpp" />
     <ClCompile Include="zoom_session_tests.cpp" />
+    <ClCompile Include="window_fit_tests.cpp" />
     <ClCompile Include="GlideZoom.UnitTests.cpp" />
     <ClCompile Include="InputHealthTests.cpp" />
+    <ClCompile Include="MainSettingsReloadTests.cpp" />
+    <ClCompile Include="MonitorReturnTests.cpp" />
     <ClCompile Include="RoutingTests.cpp" />
     <ClCompile Include="WheelAccelerationTests.cpp" />
     <ClCompile Include="WheelActivationTests.cpp" />
     <ClCompile Include="PointerSpeedTests.cpp" />
+    <ClCompile Include="PointerSpeedCompositionTests.cpp" />
     <ClCompile Include="ScopeIndicatorTests.cpp" />
     <ClCompile Include="IndicatorVisibilityTests.cpp" />
     <ClCompile Include="GpuShaderTests.cpp" />
