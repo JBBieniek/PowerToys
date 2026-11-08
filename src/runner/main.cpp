@@ -336,6 +336,7 @@ int runner(bool isProcessElevated, bool openSettings, std::string settingsWindow
             L"PowerToys.WorkspacesModuleInterface.dll",
             L"PowerToys.CmdPalModuleInterface.dll",
             L"PowerToys.ZoomItModuleInterface.dll",
+            L"PowerToys.GlideZoomModuleInterface.dll",
             L"PowerToys.LightSwitchModuleInterface.dll",
             L"PowerToys.PowerDisplayModuleInterface.dll",
             L"PowerToys.GrabAndMoveModuleInterface.dll",

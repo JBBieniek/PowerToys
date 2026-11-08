@@ -94,6 +94,7 @@ namespace Microsoft.PowerToys.Settings.UI.Helpers
                 ModuleType.PowerOCR => typeof(PowerOcrPage),
                 ModuleType.PowerDisplay => typeof(PowerDisplayPage),
                 ModuleType.ZoomIt => typeof(ZoomItPage),
+                ModuleType.GlideZoom => typeof(GlideZoomPage),
                 ModuleType.GrabAndMove => typeof(GrabAndMovePage),
                 _ => typeof(DashboardPage), // never called, all values listed above
             };

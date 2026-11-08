@@ -478,6 +478,7 @@ namespace Microsoft.PowerToys.Settings.UI
                 case "Workspaces": return typeof(WorkspacesPage);
                 case "CmdPal": return typeof(CmdPalPage);
                 case "ZoomIt": return typeof(ZoomItPage);
+                case "GlideZoom": return typeof(GlideZoomPage);
                 case "GrabAndMove": return typeof(GrabAndMovePage);
                 default:
                     // Fallback to Dashboard

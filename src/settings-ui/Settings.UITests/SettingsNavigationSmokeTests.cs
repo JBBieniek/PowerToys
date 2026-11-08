@@ -54,6 +54,7 @@ public sealed class SettingsNavigationSmokeTests : UITestBase
         new NavigationCase("SystemToolsNavItem", "AwakeNavItem"),
         new NavigationCase("SystemToolsNavItem", "CmdPalNavItem"),
         new NavigationCase("SystemToolsNavItem", "ColorPickerNavItem"),
+        new NavigationCase("SystemToolsNavItem", "GlideZoomNavItem"),
         new NavigationCase("SystemToolsNavItem", "LightSwitchNavItem"),
         new NavigationCase("SystemToolsNavItem", "PowerLauncherNavItem"),
         new NavigationCase("SystemToolsNavItem", "ScreenRulerNavItem"),

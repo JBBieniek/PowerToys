@@ -490,6 +490,7 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
                 ModuleType.CmdPal => GetModuleItemsCmdPal(),
                 ModuleType.ColorPicker => GetModuleItemsColorPicker(),
                 ModuleType.CropAndLock => GetModuleItemsCropAndLock(),
+                ModuleType.GlideZoom => GetModuleItemsGlideZoom(),
                 ModuleType.EnvironmentVariables => GetModuleItemsEnvironmentVariables(),
                 ModuleType.FancyZones => GetModuleItemsFancyZones(),
                 ModuleType.FindMyMouse => GetModuleItemsFindMyMouse(),
@@ -559,6 +560,15 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
                 new DashboardModuleShortcutItem() { Label = resourceLoader.GetString("LightSwitch_ForceDarkMode"), Shortcut = settings.Properties.ToggleThemeHotkey.Value.GetKeysList() },
             };
             return new ObservableCollection<DashboardModuleItem>(list);
+        }
+
+        private ObservableCollection<DashboardModuleItem> GetModuleItemsGlideZoom()
+        {
+            return new ObservableCollection<DashboardModuleItem>
+            {
+                new DashboardModuleShortcutItem() { Label = resourceLoader.GetString("GlideZoom_ToggleMonitor"), Shortcut = new HotkeySettings(false, true, true, false, 0x5A).GetKeysList() },
+                new DashboardModuleShortcutItem() { Label = resourceLoader.GetString("GlideZoom_Reset"), Shortcut = new HotkeySettings(false, true, true, false, 0x1B).GetKeysList() },
+            };
         }
 
         private ObservableCollection<DashboardModuleItem> GetModuleItemsCropAndLock()

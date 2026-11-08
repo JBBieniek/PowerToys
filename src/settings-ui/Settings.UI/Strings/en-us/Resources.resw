@@ -6943,4 +6943,242 @@ Text uses the current drawing color.</value>
   <data name="MouseWithoutBorders_PairingUpdateFailed.Message" xml:space="preserve">
     <value>Pairing could not be loaded or updated. Try again.</value>
   </data>
+  <data name="GlideZoom.ModuleTitle" xml:space="preserve">
+    <value>GlideZoom</value>
+    <comment>{Locked="GlideZoom"}</comment>
+  </data>
+  <data name="GlideZoom.ModuleDescription" xml:space="preserve">
+    <value>Magnify your desktop while continuing to click, type, and work. Zoom one monitor or the entire desktop using the mouse, keyboard, or touchpad.</value>
+  </data>
+  <data name="Shell_GlideZoom.Content" xml:space="preserve">
+    <value>GlideZoom</value>
+    <comment>{Locked="GlideZoom"}</comment>
+  </data>
+  <data name="GlideZoom_Enable.Header" xml:space="preserve">
+    <value>Enable GlideZoom</value>
+    <comment>{Locked="GlideZoom"}</comment>
+  </data>
+  <data name="GlideZoom_ToggleMonitor" xml:space="preserve">
+    <value>Toggle monitor zoom</value>
+  </data>
+  <data name="GlideZoom_Reset" xml:space="preserve">
+    <value>Reset zoom</value>
+  </data>
+  <data name="GlideZoom_Controls.Header" xml:space="preserve">
+    <value>Activation</value>
+  </data>
+  <data name="GlideZoom_Shortcuts.Header" xml:space="preserve">
+    <value>Keyboard controls</value>
+  </data>
+  <data name="GlideZoom_ShortcutHelp.Text" xml:space="preserve">
+    <value>Left Win + Left Alt + = / −: zoom in / out (also + or numpad; tap or hold)
+Ctrl + Alt + = / −: backup zoom controls (also + or numpad)
+Ctrl + Alt + Space: hold and move the mouse vertically to zoom
+Ctrl + Alt + Z: toggle zoom on the current monitor using its configured mode
+Ctrl + Alt + Shift + Z: switch to linked monitors and toggle zoom
+Ctrl + Alt + I: switch to independent monitors and toggle zoom
+Ctrl + Alt + Esc: reset all zoom
+Ctrl + Alt + S: copy the zoomed view
+Ctrl + Alt + V: show the view indicator</value>
+  </data>
+  <data name="GlideZoom_WheelModifier.Header" xml:space="preserve">
+    <value>Mouse wheel modifier</value>
+  </data>
+  <data name="GlideZoom_WheelModifier.Description" xml:space="preserve">
+    <value>Hold these keys while scrolling to zoom.</value>
+  </data>
+  <data name="GlideZoom_ModifierCtrlAlt.Content" xml:space="preserve">
+    <value>Left Ctrl + Left Alt</value>
+  </data>
+  <data name="GlideZoom_ModifierCtrl.Content" xml:space="preserve">
+    <value>Ctrl</value>
+  </data>
+  <data name="GlideZoom_ModifierAlt.Content" xml:space="preserve">
+    <value>Left Alt</value>
+  </data>
+  <data name="GlideZoom_ModifierWin.Content" xml:space="preserve">
+    <value>Win</value>
+  </data>
+  <data name="GlideZoom_DoubleControl.Header" xml:space="preserve">
+    <value>Double-tap Ctrl to zoom</value>
+  </data>
+  <data name="GlideZoom_DoubleControl.Description" xml:space="preserve">
+    <value>Double-tap Left Ctrl, holding the second press, then move the mouse vertically.</value>
+  </data>
+  <data name="GlideZoom_ModifiedDoubleClick.Header" xml:space="preserve">
+    <value>Ctrl + Alt + double-click to zoom</value>
+  </data>
+  <data name="GlideZoom_ModifiedDoubleClick.Description" xml:space="preserve">
+    <value>Hold Ctrl + Alt, double-click the left mouse button and hold, then move vertically. Matching clicks are reserved for GlideZoom.</value>
+    <comment>{Locked="GlideZoom"}</comment>
+  </data>
+  <data name="GlideZoom_ThreeFingerTouchpad.Header" xml:space="preserve">
+    <value>Three-finger touchpad zoom</value>
+  </data>
+  <data name="GlideZoom_ThreeFingerTouchpad.Description" xml:space="preserve">
+    <value>Tap with three fingers, lift, then tap and hold with three fingers. Move vertically to zoom. Requires a compatible touchpad.</value>
+  </data>
+  <data name="GlideZoom_Zoom.Header" xml:space="preserve">
+    <value>Zoom behavior</value>
+  </data>
+  <data name="GlideZoom_ZoomScope.Header" xml:space="preserve">
+    <value>Zoom scope</value>
+  </data>
+  <data name="GlideZoom_ZoomScope.Description" xml:space="preserve">
+    <value>Independent monitors keep their own zoom. All monitors together links the desktop. The monitor shortcuts can temporarily switch scope while GlideZoom is running.</value>
+    <comment>{Locked="GlideZoom"}</comment>
+  </data>
+  <data name="GlideZoom_ZoomScopeSelectedMonitor.Content" xml:space="preserve">
+    <value>Selected monitor (one view)</value>
+  </data>
+  <data name="GlideZoom_ZoomScopeAllMonitors.Content" xml:space="preserve">
+    <value>All monitors together</value>
+  </data>
+  <data name="GlideZoom_ZoomScopeIndependentMonitors.Content" xml:space="preserve">
+    <value>Independent monitors</value>
+  </data>
+  <data name="GlideZoom_MaximumZoom.Header" xml:space="preserve">
+    <value>Maximum magnification</value>
+  </data>
+  <data name="GlideZoom_Sensitivity.Header" xml:space="preserve">
+    <value>Gesture sensitivity</value>
+  </data>
+  <data name="GlideZoom_SensitivityGentle.Content" xml:space="preserve">
+    <value>Gentle</value>
+  </data>
+  <data name="GlideZoom_SensitivityBalanced.Content" xml:space="preserve">
+    <value>Balanced</value>
+  </data>
+  <data name="GlideZoom_SensitivityFast.Content" xml:space="preserve">
+    <value>Fast</value>
+  </data>
+  <data name="GlideZoom_ZoomMultiplier.Header" xml:space="preserve">
+    <value>Keyboard and wheel zoom speed</value>
+  </data>
+  <data name="GlideZoom_ZoomMultiplier.Description" xml:space="preserve">
+    <value>Multiply the amount of zoom for each keyboard or wheel step (1–100).</value>
+  </data>
+  <data name="GlideZoom_ReverseDirection.Header" xml:space="preserve">
+    <value>Reverse zoom direction</value>
+  </data>
+  <data name="GlideZoom_Pointer.Header" xml:space="preserve">
+    <value>Pointer and panning</value>
+  </data>
+  <data name="GlideZoom_ZoomScaledPointer.Header" xml:space="preserve">
+    <value>Adjust pointer speed with zoom</value>
+  </data>
+  <data name="GlideZoom_ZoomScaledPointer.Description" xml:space="preserve">
+    <value>Automatically reduce pointer movement as zoom increases. Pointer speed below remains adjustable with this on or off. Unmagnified monitors keep their Windows pointer speed.</value>
+  </data>
+  <data name="GlideZoom_PointerSpeed.Header" xml:space="preserve">
+    <value>Pointer speed (%)</value>
+  </data>
+  <data name="GlideZoom_PointerSpeed.Description" xml:space="preserve">
+    <value>Speed on magnified monitors (25–300%). 100% keeps the default feel; lower values are slower and higher values are faster. With automatic adjustment on, speed also adapts to the zoom level.</value>
+  </data>
+  <data name="GlideZoom_CenterFollow.Header" xml:space="preserve">
+    <value>Keep the pointer centered</value>
+  </data>
+  <data name="GlideZoom_EdgePanMultiplier.Header" xml:space="preserve">
+    <value>Edge pan speed</value>
+  </data>
+  <data name="GlideZoom_EdgePanMultiplier.Description" xml:space="preserve">
+    <value>Multiply the panning speed near the screen edges (1–10).</value>
+  </data>
+  <data name="GlideZoom_WheelAcceleration.Header" xml:space="preserve">
+    <value>Accelerate fast wheel scrolling</value>
+  </data>
+  <data name="GlideZoom_WheelAcceleration.Description" xml:space="preserve">
+    <value>Increase zoom steps when you scroll rapidly. Slow scrolling keeps the configured step size.</value>
+  </data>
+  <data name="GlideZoom_WheelAccelerationLimit.Header" xml:space="preserve">
+    <value>Maximum fast-scroll boost</value>
+  </data>
+  <data name="GlideZoom_WheelAccelerationLimit.Description" xml:space="preserve">
+    <value>Limit the extra wheel zoom multiplier (1–4).</value>
+  </data>
+  <data name="GlideZoom_Indicator.Header" xml:space="preserve">
+    <value>View indicator</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorMode.Header" xml:space="preserve">
+    <value>Show view indicator</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorMode.Description" xml:space="preserve">
+    <value>Choose when to display the magnified source region on selected or independent monitors. Linked monitors have no indicator. When enabled, Ctrl + Alt + V reveals it.</value>
+  </data>
+  <data name="GlideZoom_IndicatorOff.Content" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="GlideZoom_IndicatorMoving.Content" xml:space="preserve">
+    <value>While moving or zooming</value>
+  </data>
+  <data name="GlideZoom_IndicatorShortcut.Content" xml:space="preserve">
+    <value>Shortcut only</value>
+  </data>
+  <data name="GlideZoom_IndicatorAlways.Content" xml:space="preserve">
+    <value>Always while zoomed</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorStyle.Header" xml:space="preserve">
+    <value>Indicator style</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorStyle.Description" xml:space="preserve">
+    <value>The overview frames the source region in a small preview. The full-screen outline marks the same proportional region at its original position on the monitor. Choose both to show them together with the same visibility and fade timing; each has its own opacity.</value>
+  </data>
+  <data name="GlideZoom_IndicatorOverview.Content" xml:space="preserve">
+    <value>Monitor overview</value>
+  </data>
+  <data name="GlideZoom_IndicatorOutline.Content" xml:space="preserve">
+    <value>Full-screen scope outline</value>
+  </data>
+  <data name="GlideZoom_IndicatorBoth.Content" xml:space="preserve">
+    <value>Overview and screen outline</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorSize.Header" xml:space="preserve">
+    <value>Overview width (%)</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorSize.Description" xml:space="preserve">
+    <value>Percentage of the monitor width used by the overview (10–35).</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorOpacity.Header" xml:space="preserve">
+    <value>Screen outline opacity (%)</value>
+  </data>
+  <data name="GlideZoom_OverviewOpacity.Header" xml:space="preserve">
+    <value>Overview opacity (%)</value>
+  </data>
+  <data name="GlideZoom_OverviewOpacity.Description" xml:space="preserve">
+    <value>Transparency of the corner preview (0–100%). 0 is invisible and 100 is fully opaque.</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorBorder.Header" xml:space="preserve">
+    <value>Frame thickness (pixels)</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorDuration.Header" xml:space="preserve">
+    <value>Visible duration (ms)</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorDuration.Description" xml:space="preserve">
+    <value>Time to keep the indicator visible after movement, zooming, or its shortcut (500–5000 ms).</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorDetails.Header" xml:space="preserve">
+    <value>Show region details</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorDetails.Description" xml:space="preserve">
+    <value>Show source X/Y, width and height in pixels, and current magnification.</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorX.Header" xml:space="preserve">
+    <value>Overview horizontal position (%)</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorX.Description" xml:space="preserve">
+    <value>Position within the available space: 0 aligns left and 100 aligns right.</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorY.Header" xml:space="preserve">
+    <value>Overview vertical position (%)</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorY.Description" xml:space="preserve">
+    <value>Position within the available space: 0 aligns top and 100 aligns bottom.</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorFade.Header" xml:space="preserve">
+    <value>Fade duration (ms)</value>
+  </data>
+  <data name="GlideZoom_ScopeIndicatorFade.Description" xml:space="preserve">
+    <value>Fade in and out over this duration. Set 0 for immediate changes.</value>
+  </data>
 </root>

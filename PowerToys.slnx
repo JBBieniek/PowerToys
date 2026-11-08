@@ -1451,4 +1451,19 @@
   <Project Path="tools/CliShim.UnitTests/CliShim.UnitTests.vcxproj" Id="d4b0ed68-867d-46b4-a03f-ec52b9fbebe5" />
   <Project Path="tools/BugReportTool/BugReportTool/BugReportTool.vcxproj" Id="99126840-5c30-4e9e-ac6c-e73dded5c3bd" />
   <Project Path="tools/StylesReportTool/StylesReportTool.vcxproj" Id="0febafaf-cb77-41f0-8ef9-8e3ad4b4f842" />
+  <Folder Name="/modules/GlideZoom/">
+    <Project Path="src/modules/GlideZoom/GlideZoom/GlideZoom.vcxproj" Id="5f23580e-44bc-43dc-ab12-71c52a533bb5" />
+    <Project Path="src/modules/GlideZoom/GlideZoomModuleInterface/GlideZoomModuleInterface.vcxproj" Id="7386449b-6b9b-4a9c-9595-8acdb7515f27" />
+    <Project Path="src/modules/GlideZoom/Tests/GlideZoom.UnitTests.vcxproj" Id="4087a359-66f3-45cb-a742-c6adacc54c1b" />
+    <Project Path="src/modules/GlideZoom/Tests/GlideZoom.Capture.UnitTests.vcxproj" Id="b9fad63a-220a-46b8-8d27-9776ac480b7f" />
+    <Project Path="src/modules/GlideZoom/Tests/GlideZoom.Latency.UnitTests.vcxproj" Id="a40249b8-c9e3-4724-82af-a09f7c9ea80d" />
+    <Project Path="src/modules/GlideZoom/Tests/GlideZoom.Monitor.UnitTests.vcxproj" Id="50ad2a94-37f3-4d31-af19-3230177030bb" />
+    <Project Path="src/modules/GlideZoom/Tests/GlideZoom.Paint.UnitTests.vcxproj" Id="1be4fafc-1e66-4e14-a2ff-877c36eb353d" />
+    <Project Path="src/modules/GlideZoom/Tests/GlideZoom.Hid.UnitTests.vcxproj" Id="288acb0a-8e02-471d-ae76-3b9de37f5246" />
+    <Project Path="src/modules/GlideZoom/Tests/GlideZoom.Integration.UnitTests.vcxproj" Id="752172df-f80d-4667-8f89-b24f041fd4dd" />
+    <Project Path="src/modules/GlideZoom/Fuzzing/GlideZoom.FuzzingTest.vcxproj" Id="245262f6-db94-4f1d-b58f-e7d73954d563">
+      <Build Solution="*|ARM64" Project="false" />
+      <Build Solution="Debug|x64" Project="false" />
+    </Project>
+  </Folder>
 </Solution>

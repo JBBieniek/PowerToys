@@ -512,6 +512,23 @@ namespace Microsoft.PowerToys.Settings.UI.Library
             }
         }
 
+        private bool glideZoom; // defaulting to off
+
+        [JsonPropertyName("GlideZoom")]
+        public bool GlideZoom
+        {
+            get => glideZoom;
+            set
+            {
+                if (glideZoom != value)
+                {
+                    LogTelemetryEvent(value);
+                    glideZoom = value;
+                    NotifyChange();
+                }
+            }
+        }
+
         private bool zoomIt;
 
         [JsonPropertyName("ZoomIt")]
