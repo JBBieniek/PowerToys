@@ -60,6 +60,7 @@
     <ClInclude Include="input_host.h" />
     <ClInclude Include="input_health.h" />
     <ClInclude Include="input_routing.h" />
+    <ClInclude Include="routing_point.h" />
     <ClInclude Include="indicator_visibility.h" />
     <ClInclude Include="input_state.h" />
     <ClInclude Include="input_transport.h" />
