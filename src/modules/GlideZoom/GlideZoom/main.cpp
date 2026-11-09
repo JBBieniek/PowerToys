@@ -2203,7 +2203,7 @@ namespace
                 const glide::session::Input current = session_.Expected().input;
                 wchar_t text[1900]{};
                 swprintf_s(text,
-                           L"Pointer write details: drag=%u constrained=%u failure=%u phase=%s observedOwnedEcho=%u time=%llu epoch=%llu zoom=%.9g speed=%.9g automatic=%u "
+                           L"Pointer write details: drag=%u constrained=%u failure=%u phase=%s observedOwnedEcho=%u observedEligibleEcho=%u observedEchoAgeMs=%llu time=%llu epoch=%llu zoom=%.9g speed=%.9g automatic=%u "
                            L"before=(%.0f,%.0f) candidate=(%.0f,%.0f) requested=(%.0f,%.0f) observed=(%.0f,%.0f) "
                            L"warpOK=%u readOK=%u error=%u logicalOK=%u logical=(%.0f,%.0f) logicalError=%u "
                            L"clipOK=%u clip=(%.0f,%.0f,%.0f,%.0f) clipError=%u "
@@ -2214,6 +2214,8 @@ namespace
                            static_cast<unsigned>(detail.reason),
                            glide::pointer::FailurePhaseText(detail.phase),
                            static_cast<unsigned>(detail.observedOwnedEcho),
+                           static_cast<unsigned>(detail.observedEligibleEcho),
+                           static_cast<unsigned long long>(detail.observedEchoAgeMs),
                            static_cast<unsigned long long>(detail.at),
                            static_cast<unsigned long long>(detail.epoch),
                            detail.zoom,
