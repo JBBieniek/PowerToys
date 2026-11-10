@@ -109,11 +109,13 @@ public sealed class AllAppsViewModel : Observable
         {
             var moduleType = item.Tag;
             var gpo = Helpers.ModuleGpoHelper.GetModuleGpoConfiguration(moduleType);
+            var available = ModuleAvailabilityHelper.IsModuleAvailable(moduleType);
             var isLocked = gpo is GpoRuleConfigured.Enabled or GpoRuleConfigured.Disabled;
-            var isEnabled = gpo == GpoRuleConfigured.Enabled || (!isLocked && Microsoft.PowerToys.Settings.UI.Library.Helpers.ModuleHelper.GetIsModuleEnabled(_generalSettings, moduleType));
+            var isEnabled = available && (gpo == GpoRuleConfigured.Enabled || (!isLocked && Microsoft.PowerToys.Settings.UI.Library.Helpers.ModuleHelper.GetIsModuleEnabled(_generalSettings, moduleType)));
 
             item.Label = _resourceLoader.GetString(Microsoft.PowerToys.Settings.UI.Library.Helpers.ModuleHelper.GetModuleLabelResourceName(moduleType));
             item.IsLocked = isLocked;
+            item.IsAvailable = available;
             item.Icon = Microsoft.PowerToys.Settings.UI.Library.Helpers.ModuleHelper.GetModuleTypeFluentIconName(moduleType);
 
             if (item.IsEnabled != isEnabled)
@@ -179,6 +181,15 @@ public sealed class AllAppsViewModel : Observable
     {
         var flyoutItem = (FlyoutMenuItem)item;
         var isEnabled = flyoutItem.IsEnabled;
+
+        var gpo = Helpers.ModuleGpoHelper.GetModuleGpoConfiguration(flyoutItem.Tag);
+        flyoutItem.IsAvailable = ModuleAvailabilityHelper.IsModuleAvailable(flyoutItem.Tag);
+        flyoutItem.IsLocked = gpo is GpoRuleConfigured.Enabled or GpoRuleConfigured.Disabled;
+        if (!flyoutItem.IsToggleEnabled)
+        {
+            flyoutItem.UpdateStatus(flyoutItem.IsAvailable && (gpo == GpoRuleConfigured.Enabled || (!flyoutItem.IsLocked && Microsoft.PowerToys.Settings.UI.Library.Helpers.ModuleHelper.GetIsModuleEnabled(_generalSettings, flyoutItem.Tag))));
+            return;
+        }
 
         // Ignore toggle operations during sorting to prevent race conditions.
         // Revert the toggle state since UI already changed due to TwoWay binding.

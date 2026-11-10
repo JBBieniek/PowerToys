@@ -16,6 +16,7 @@
 #include <limits>
 
 void FuzzPointerSpeed(const std::uint8_t* data, std::size_t size);
+void FuzzDeploymentPolicy(const std::uint8_t* data, std::size_t size);
 
 namespace
 {
@@ -389,6 +390,7 @@ namespace
 
 void FuzzRouting(const std::uint8_t* data, std::size_t size)
 {
+    FuzzDeploymentPolicy(data, size);
     using namespace glide::input::routing;
     size = (std::min)(size, std::size_t{ 16384 });
     FuzzPhysicalRoutingPoint(data, size);

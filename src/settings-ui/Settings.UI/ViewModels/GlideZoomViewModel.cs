@@ -4,7 +4,11 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using global::PowerToys.GPOWrapper;
+using ManagedCommon;
+using Microsoft.PowerToys.Settings.UI.Helpers;
 using Microsoft.PowerToys.Settings.UI.Library;
+using Microsoft.PowerToys.Settings.UI.Library.Helpers;
 using Microsoft.PowerToys.Settings.UI.Library.Interfaces;
 
 namespace Microsoft.PowerToys.Settings.UI.ViewModels
@@ -15,10 +19,14 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
         private readonly ISettingsRepository<GeneralSettings> _generalRepository;
         private readonly GlideZoomSettings _settings;
         private readonly Func<string, int> _sendConfig;
+        private readonly Func<GpoRuleConfigured> _getEnabledPolicy;
+        private readonly Func<bool> _getAvailability;
+        private GpoRuleConfigured _enabledPolicy;
+        private bool _isAvailable;
 
         protected override string ModuleName => GlideZoomSettings.ModuleName;
 
-        public GlideZoomViewModel(SettingsUtils settingsUtils, ISettingsRepository<GeneralSettings> generalRepository, ISettingsRepository<GlideZoomSettings> moduleRepository, Func<string, int> sendConfig)
+        public GlideZoomViewModel(SettingsUtils settingsUtils, ISettingsRepository<GeneralSettings> generalRepository, ISettingsRepository<GlideZoomSettings> moduleRepository, Func<string, int> sendConfig, Func<GpoRuleConfigured> getEnabledPolicy = null, Func<bool> getAvailability = null)
         {
             ArgumentNullException.ThrowIfNull(settingsUtils);
             ArgumentNullException.ThrowIfNull(generalRepository);
@@ -29,13 +37,30 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
             _generalRepository = generalRepository;
             _settings = moduleRepository.SettingsConfig;
             _sendConfig = sendConfig;
+            _getEnabledPolicy = getEnabledPolicy ?? (() => ModuleGpoHelper.GetModuleGpoConfiguration(ModuleType.GlideZoom));
+            _enabledPolicy = _getEnabledPolicy();
+            _getAvailability = getAvailability ?? (() => ModuleAvailabilityHelper.IsModuleAvailable(ModuleType.GlideZoom));
+            _isAvailable = _getAvailability();
         }
+
+        public bool IsEnabledGpoConfigured => _enabledPolicy is GpoRuleConfigured.Enabled or GpoRuleConfigured.Disabled;
+
+        public bool IsAvailable => _isAvailable;
+
+        public bool IsUnavailable => !IsAvailable;
+
+        public bool CanToggleEnabled => IsAvailable && !IsEnabledGpoConfigured;
 
         public bool IsEnabled
         {
-            get => _generalRepository.SettingsConfig.Enabled.GlideZoom;
+            get => IsAvailable && (IsEnabledGpoConfigured ? _enabledPolicy == GpoRuleConfigured.Enabled : _generalRepository.SettingsConfig.Enabled.GlideZoom);
             set
             {
+                if (!CanToggleEnabled)
+                {
+                    return;
+                }
+
                 var generalSettings = _generalRepository.SettingsConfig;
                 if (value != generalSettings.Enabled.GlideZoom)
                 {
@@ -235,7 +260,16 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
             set => SetInteger(_settings.Properties.ScopeIndicatorFade, value, 0, 400);
         }
 
-        public void RefreshEnabledState() => OnPropertyChanged(nameof(IsEnabled));
+        public void RefreshEnabledState()
+        {
+            _enabledPolicy = _getEnabledPolicy();
+            _isAvailable = _getAvailability();
+            OnPropertyChanged(nameof(IsEnabledGpoConfigured));
+            OnPropertyChanged(nameof(IsAvailable));
+            OnPropertyChanged(nameof(IsUnavailable));
+            OnPropertyChanged(nameof(CanToggleEnabled));
+            OnPropertyChanged(nameof(IsEnabled));
+        }
 
         private void SetInteger(IntProperty property, int value, int minimum, int maximum, [CallerMemberName] string propertyName = null)
         {

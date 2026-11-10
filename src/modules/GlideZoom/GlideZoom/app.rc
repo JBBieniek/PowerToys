@@ -1,5 +1,6 @@
 #include <windows.h>
-#include "../../../common/version/version.h"
+#include "resource.h"
+#include <common/version/version.h>
 1 RT_MANIFEST "app.manifest"
 1 ICON "glidezoom.ico"
 1 VERSIONINFO

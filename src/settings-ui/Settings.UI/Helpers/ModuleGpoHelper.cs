@@ -50,6 +50,7 @@ namespace Microsoft.PowerToys.Settings.UI.Helpers
                 case ModuleType.PowerOCR: return GPOWrapper.GetConfiguredTextExtractorEnabledValue();
                 case ModuleType.PowerDisplay: return GPOWrapper.GetConfiguredPowerDisplayEnabledValue();
                 case ModuleType.ZoomIt: return GPOWrapper.GetConfiguredZoomItEnabledValue();
+                case ModuleType.GlideZoom: return GPOWrapper.GetConfiguredAllUtilitiesEnabledValue();
                 case ModuleType.GrabAndMove: return GPOWrapper.GetConfiguredGrabAndMoveEnabledValue();
                 default: return GpoRuleConfigured.Unavailable;
             }

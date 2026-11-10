@@ -15,6 +15,9 @@
 #include <modules/interface/powertoy_module_interface.h>
 
 #include "../GlideZoom/powertoys_settings.h"
+#include "../GlideZoom/deployment_win32.h"
+#include "Generated Files/resource.h"
+#include <common/utils/resources.h>
 
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 
@@ -79,7 +82,11 @@ public:
         }
     }
 
-    PCWSTR get_name() override { return ModuleKey; }
+    PCWSTR get_name() override
+    {
+        static const std::wstring name = GET_RESOURCE_STRING(IDS_MODULENAME);
+        return name.c_str();
+    }
     const wchar_t* get_key() override { return ModuleKey; }
     bool is_enabled_by_default() const override { return false; }
 
@@ -92,33 +99,33 @@ public:
     bool get_config(wchar_t* buffer, int* bufferSize) override
     {
         PowerToysSettings::Settings settings(reinterpret_cast<HINSTANCE>(&__ImageBase), ModuleKey);
-        settings.set_description(L"Interactive desktop magnification with keyboard, mouse and touchpad controls.");
-        settings.add_int_spinner(L"WheelModifier", L"Wheel modifier", m_settings.modifier, 0, 3, 1);
-        settings.add_int_spinner(L"MaximumZoom", L"Maximum zoom", m_settings.maxZoom, 2, 16, 2);
-        settings.add_int_spinner(L"Sensitivity", L"Gesture sensitivity", m_settings.sensitivity, 0, 2, 1);
-        settings.add_int_spinner(L"ZoomMultiplier", L"Key and wheel multiplier", m_settings.zoomMultiplier, 1, 100, 1);
-        settings.add_int_spinner(L"EdgePanMultiplier", L"Edge pan multiplier", m_settings.edgePanMultiplier, 1, 10, 1);
-        settings.add_int_spinner(L"ZoomScope", L"Zoom target", m_settings.zoomScope, 0, 2, 1);
-        settings.add_int_spinner(L"ScopeIndicatorMode", L"View indicator visibility", m_settings.scopeIndicatorMode, 0, 3, 1);
-        settings.add_int_spinner(L"ScopeIndicatorStyle", L"View indicator style", m_settings.scopeIndicatorStyle, 0, 2, 1);
-        settings.add_int_spinner(L"PointerSpeed", L"Pointer speed (%)", m_settings.pointerSpeed, 25, 300, 1);
-        settings.add_int_spinner(L"OverviewOpacity", L"Overview opacity (%)", m_settings.overviewOpacity, 0, 100, 1);
-        settings.add_int_spinner(L"ScopeIndicatorSize", L"Overview width percent", m_settings.scopeIndicatorSize, 10, 35, 1);
-        settings.add_int_spinner(L"ScopeIndicatorOpacity", L"View indicator opacity percent", m_settings.scopeIndicatorOpacity, 10, 90, 1);
-        settings.add_int_spinner(L"ScopeIndicatorBorder", L"View indicator border width", m_settings.scopeIndicatorBorder, 1, 8, 1);
-        settings.add_int_spinner(L"ScopeIndicatorDuration", L"View indicator duration milliseconds", m_settings.scopeIndicatorDuration, 500, 5000, 100);
-        settings.add_int_spinner(L"WheelAccelerationLimit", L"Maximum fast-scroll boost", m_settings.wheelAccelerationLimit, 1, 4, 1);
-        settings.add_int_spinner(L"ScopeIndicatorX", L"Overview horizontal position percent", m_settings.scopeIndicatorX, 0, 100, 1);
-        settings.add_int_spinner(L"ScopeIndicatorY", L"Overview vertical position percent", m_settings.scopeIndicatorY, 0, 100, 1);
-        settings.add_int_spinner(L"ScopeIndicatorFade", L"View indicator fade milliseconds", m_settings.scopeIndicatorFade, 0, 400, 10);
-        settings.add_bool_toggle(L"DoubleControl", L"Double-tap Left Ctrl and hold", m_settings.keyboardGesture);
-        settings.add_bool_toggle(L"ModifiedDoubleClick", L"Modified double-click and hold", m_settings.mouseGesture);
-        settings.add_bool_toggle(L"ReverseDirection", L"Reverse wheel and drag direction", m_settings.reverse);
-        settings.add_bool_toggle(L"CenterFollow", L"Keep pointer centered", m_settings.centerFollow);
-        settings.add_bool_toggle(L"ThreeFingerTouchpad", L"Three-finger touchpad gesture", m_settings.touchpadGesture);
-        settings.add_bool_toggle(L"ZoomScaledPointer", L"Match pointer speed to zoom", m_settings.pointerScaling);
-        settings.add_bool_toggle(L"ScopeIndicatorDetails", L"View indicator coordinates and zoom", m_settings.scopeIndicatorDetails);
-        settings.add_bool_toggle(L"WheelAcceleration", L"Accelerate fast wheel scrolling", m_settings.wheelAcceleration);
+        settings.set_description(IDS_MODULEDESCRIPTION);
+        settings.add_int_spinner(L"WheelModifier", IDS_CONFIGWHEELMODIFIER, m_settings.modifier, 0, 3, 1);
+        settings.add_int_spinner(L"MaximumZoom", IDS_CONFIGMAXIMUMZOOM, m_settings.maxZoom, 2, 16, 2);
+        settings.add_int_spinner(L"Sensitivity", IDS_CONFIGSENSITIVITY, m_settings.sensitivity, 0, 2, 1);
+        settings.add_int_spinner(L"ZoomMultiplier", IDS_CONFIGZOOMMULTIPLIER, m_settings.zoomMultiplier, 1, 100, 1);
+        settings.add_int_spinner(L"EdgePanMultiplier", IDS_CONFIGEDGEPANMULTIPLIER, m_settings.edgePanMultiplier, 1, 10, 1);
+        settings.add_int_spinner(L"ZoomScope", IDS_CONFIGZOOMSCOPE, m_settings.zoomScope, 0, 2, 1);
+        settings.add_int_spinner(L"ScopeIndicatorMode", IDS_CONFIGSCOPEINDICATORMODE, m_settings.scopeIndicatorMode, 0, 3, 1);
+        settings.add_int_spinner(L"ScopeIndicatorStyle", IDS_CONFIGSCOPEINDICATORSTYLE, m_settings.scopeIndicatorStyle, 0, 2, 1);
+        settings.add_int_spinner(L"PointerSpeed", IDS_CONFIGPOINTERSPEED, m_settings.pointerSpeed, 25, 300, 1);
+        settings.add_int_spinner(L"OverviewOpacity", IDS_CONFIGOVERVIEWOPACITY, m_settings.overviewOpacity, 0, 100, 1);
+        settings.add_int_spinner(L"ScopeIndicatorSize", IDS_CONFIGSCOPEINDICATORSIZE, m_settings.scopeIndicatorSize, 10, 35, 1);
+        settings.add_int_spinner(L"ScopeIndicatorOpacity", IDS_CONFIGSCOPEINDICATOROPACITY, m_settings.scopeIndicatorOpacity, 10, 90, 1);
+        settings.add_int_spinner(L"ScopeIndicatorBorder", IDS_CONFIGSCOPEINDICATORBORDER, m_settings.scopeIndicatorBorder, 1, 8, 1);
+        settings.add_int_spinner(L"ScopeIndicatorDuration", IDS_CONFIGSCOPEINDICATORDURATION, m_settings.scopeIndicatorDuration, 500, 5000, 100);
+        settings.add_int_spinner(L"WheelAccelerationLimit", IDS_CONFIGWHEELACCELERATIONLIMIT, m_settings.wheelAccelerationLimit, 1, 4, 1);
+        settings.add_int_spinner(L"ScopeIndicatorX", IDS_CONFIGSCOPEINDICATORX, m_settings.scopeIndicatorX, 0, 100, 1);
+        settings.add_int_spinner(L"ScopeIndicatorY", IDS_CONFIGSCOPEINDICATORY, m_settings.scopeIndicatorY, 0, 100, 1);
+        settings.add_int_spinner(L"ScopeIndicatorFade", IDS_CONFIGSCOPEINDICATORFADE, m_settings.scopeIndicatorFade, 0, 400, 10);
+        settings.add_bool_toggle(L"DoubleControl", IDS_CONFIGDOUBLECONTROL, m_settings.keyboardGesture);
+        settings.add_bool_toggle(L"ModifiedDoubleClick", IDS_CONFIGMODIFIEDDOUBLECLICK, m_settings.mouseGesture);
+        settings.add_bool_toggle(L"ReverseDirection", IDS_CONFIGREVERSEDIRECTION, m_settings.reverse);
+        settings.add_bool_toggle(L"CenterFollow", IDS_CONFIGCENTERFOLLOW, m_settings.centerFollow);
+        settings.add_bool_toggle(L"ThreeFingerTouchpad", IDS_CONFIGTHREEFINGERTOUCHPAD, m_settings.touchpadGesture);
+        settings.add_bool_toggle(L"ZoomScaledPointer", IDS_CONFIGZOOMSCALEDPOINTER, m_settings.pointerScaling);
+        settings.add_bool_toggle(L"ScopeIndicatorDetails", IDS_CONFIGSCOPEINDICATORDETAILS, m_settings.scopeIndicatorDetails);
+        settings.add_bool_toggle(L"WheelAcceleration", IDS_CONFIGWHEELACCELERATION, m_settings.wheelAcceleration);
         return settings.serialize_to_buffer(buffer, bufferSize);
     }
 
@@ -163,6 +170,23 @@ public:
             return;
         }
         CloseProcessHandle();
+        try
+        {
+            const auto module = reinterpret_cast<HMODULE>(&__ImageBase);
+            const auto executable = std::filesystem::path(get_module_folderpath()) / L"PowerToys.GlideZoom.exe";
+            if (!glide::deployment::SupportedInstallation(get_module_filename()) ||
+                !glide::deployment::SupportedInstallation(get_module_filename(module)) ||
+                !glide::deployment::SupportedInstallation(executable.native()))
+            {
+                Logger::warn("GlideZoom requires a signed PowerToys machine installation in Program Files or System32; this installation is unavailable");
+                return;
+            }
+        }
+        catch (...)
+        {
+            Logger::error("Could not verify the GlideZoom machine installation; startup was refused");
+            return;
+        }
         if (!m_exitEvent || !m_settingsEvent)
         {
             Logger::error("GlideZoom lifecycle events are unavailable; startup was refused");

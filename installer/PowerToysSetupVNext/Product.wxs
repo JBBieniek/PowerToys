@@ -161,7 +161,9 @@
       <?if $(var.PerUser) = "true" ?>
       <Custom Action="UninstallDSCModule" After="InstallFinalize" Condition="Installed AND (REMOVE=&quot;ALL&quot;)" />
       <?endif?>
-      <Custom Action="TerminateProcesses" Before="InstallValidate" />
+      <Custom Action="TerminateProcesses" Before="VerifyGlideZoomStopped" />
+      <!-- Check before default MajorUpgrade removal, not in a later deferred action. -->
+      <Custom Action="VerifyGlideZoomStopped" Before="InstallValidate" />
       <Custom Action="LaunchPowerToys" Before="InstallFinalize" Condition="NOT Installed" />
 
       <!-- Restore built-in "New" context menu in case user disabled it via New+ -->
@@ -179,6 +181,7 @@
     <CustomAction Id="LaunchPowerToys" Return="ignore" Impersonate="yes" Execute="deferred" DllEntry="LaunchPowerToysCA" BinaryRef="PTCustomActions" />
 
     <CustomAction Id="TerminateProcesses" Return="ignore" Execute="immediate" DllEntry="TerminateProcessesCA" BinaryRef="PTCustomActions" />
+    <CustomAction Id="VerifyGlideZoomStopped" Return="check" Execute="immediate" DllEntry="VerifyGlideZoomStoppedCA" BinaryRef="PTCustomActions" />
 
     <CustomAction Id="SetApplyModulesRegistryChangeSetsParam" Property="ApplyModulesRegistryChangeSets" Value="[INSTALLFOLDER]" />
 

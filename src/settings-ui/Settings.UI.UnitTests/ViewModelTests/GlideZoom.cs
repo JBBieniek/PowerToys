@@ -2,10 +2,14 @@
 // The Microsoft Corporation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+extern alias SettingsUI;
+
+using System;
 using System.Collections.Generic;
 using System.IO.Abstractions;
 using System.Text.Json;
 using ManagedCommon;
+using Microsoft.PowerToys.Settings.UI.Controls;
 using Microsoft.PowerToys.Settings.UI.Library;
 using Microsoft.PowerToys.Settings.UI.Library.Helpers;
 using Microsoft.PowerToys.Settings.UI.Library.Interfaces;
@@ -13,11 +17,20 @@ using Microsoft.PowerToys.Settings.UI.ViewModels;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 
+using GpoRuleConfigured = SettingsUI::PowerToys.GPOWrapper.GpoRuleConfigured;
+
 namespace ViewModelTests
 {
     [TestClass]
     public class GlideZoom
     {
+        private static readonly string[] RuntimeFilePaths =
+        [
+            @"C:\Program Files\PowerToys\PowerToys.exe",
+            @"C:\Program Files\PowerToys\PowerToys.GlideZoomModuleInterface.dll",
+            @"C:\Program Files\PowerToys\PowerToys.GlideZoom.exe",
+        ];
+
         [TestMethod]
         public void DefaultsMatchEngineContractAndStartDisabled()
         {
@@ -348,11 +361,17 @@ namespace ViewModelTests
             generalRepository.SetupProperty(repository => repository.SettingsConfig, originalSettings);
             var moduleRepository = new Mock<ISettingsRepository<GlideZoomSettings>>();
             moduleRepository.SetupGet(repository => repository.SettingsConfig).Returns(new GlideZoomSettings());
-            using var viewModel = new GlideZoomViewModel(settingsUtils.Object, generalRepository.Object, moduleRepository.Object, message =>
-            {
-                messages.Add(message);
-                return 0;
-            });
+            using var viewModel = new GlideZoomViewModel(
+                settingsUtils.Object,
+                generalRepository.Object,
+                moduleRepository.Object,
+                message =>
+                {
+                    messages.Add(message);
+                    return 0;
+                },
+                () => GpoRuleConfigured.NotConfigured,
+                () => true);
 
             var reloadedSettings = new GeneralSettings();
             reloadedSettings.Enabled.FancyZones = false;
@@ -371,18 +390,263 @@ namespace ViewModelTests
             Assert.IsTrue(originalSettings.Enabled.FancyZones);
         }
 
-        private static GlideZoomViewModel CreateViewModel(Mock<SettingsUtils> settingsUtils, List<string> messages, GeneralSettings general = null)
+        [TestMethod]
+        [DataRow(GpoRuleConfigured.Enabled, false)]
+        [DataRow(GpoRuleConfigured.Enabled, true)]
+        [DataRow(GpoRuleConfigured.Disabled, false)]
+        [DataRow(GpoRuleConfigured.Disabled, true)]
+        public void GlobalPolicyOverridesPreferenceAndPreventsEnableWrites(GpoRuleConfigured policy, bool savedEnabled)
+        {
+            var general = new GeneralSettings();
+            general.Enabled.GlideZoom = savedEnabled;
+            var messages = new List<string>();
+            var settingsUtils = new Mock<SettingsUtils>(new FileSystem(), null);
+            using var viewModel = CreateViewModel(settingsUtils, messages, general, () => policy);
+            var effectiveEnabled = policy == GpoRuleConfigured.Enabled;
+
+            Assert.IsTrue(viewModel.IsEnabledGpoConfigured);
+            Assert.IsFalse(viewModel.CanToggleEnabled);
+            Assert.AreEqual(effectiveEnabled, viewModel.IsEnabled);
+
+            viewModel.IsEnabled = !effectiveEnabled;
+            viewModel.IsEnabled = effectiveEnabled;
+
+            Assert.AreEqual(effectiveEnabled, viewModel.IsEnabled);
+            Assert.AreEqual(savedEnabled, general.Enabled.GlideZoom);
+            Assert.HasCount(0, messages);
+            settingsUtils.Verify(utils => utils.SaveSettings(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        [DataRow(GpoRuleConfigured.NotConfigured)]
+        [DataRow(GpoRuleConfigured.Unavailable)]
+        [DataRow(GpoRuleConfigured.WrongValue)]
+        public void UnenforcedPolicyUsesTheCurrentSavedPreference(GpoRuleConfigured policy)
+        {
+            var general = new GeneralSettings();
+            var messages = new List<string>();
+            var settingsUtils = new Mock<SettingsUtils>(new FileSystem(), null);
+            using var viewModel = CreateViewModel(settingsUtils, messages, general, () => policy);
+
+            Assert.IsFalse(viewModel.IsEnabledGpoConfigured);
+            Assert.IsTrue(viewModel.CanToggleEnabled);
+            Assert.IsFalse(viewModel.IsEnabled);
+            viewModel.IsEnabled = true;
+            Assert.IsTrue(viewModel.IsEnabled);
+            Assert.IsTrue(general.Enabled.GlideZoom);
+            viewModel.IsEnabled = false;
+
+            Assert.IsFalse(viewModel.IsEnabled);
+            Assert.IsFalse(general.Enabled.GlideZoom);
+            Assert.HasCount(2, messages);
+            using var json = JsonDocument.Parse(messages[1]);
+            Assert.IsFalse(json.RootElement.GetProperty("general").GetProperty("enabled").GetProperty("GlideZoom").GetBoolean());
+        }
+
+        [TestMethod]
+        public void PolicyRefreshPreservesPreferenceWithoutSendingEnableUpdates()
+        {
+            var general = new GeneralSettings();
+            var messages = new List<string>();
+            var settingsUtils = new Mock<SettingsUtils>(new FileSystem(), null);
+            var policy = GpoRuleConfigured.NotConfigured;
+            using var viewModel = CreateViewModel(settingsUtils, messages, general, () => policy);
+
+            policy = GpoRuleConfigured.Enabled;
+            viewModel.RefreshEnabledState();
+            Assert.IsTrue(viewModel.IsEnabledGpoConfigured);
+            Assert.IsTrue(viewModel.IsEnabled);
+            viewModel.IsEnabled = false;
+
+            policy = GpoRuleConfigured.Disabled;
+            viewModel.RefreshEnabledState();
+            Assert.IsTrue(viewModel.IsEnabledGpoConfigured);
+            Assert.IsFalse(viewModel.IsEnabled);
+            viewModel.IsEnabled = true;
+
+            policy = GpoRuleConfigured.NotConfigured;
+            viewModel.RefreshEnabledState();
+            Assert.IsFalse(viewModel.IsEnabledGpoConfigured);
+            Assert.IsFalse(viewModel.IsEnabled);
+            Assert.IsFalse(general.Enabled.GlideZoom);
+            Assert.HasCount(0, messages);
+
+            viewModel.IsEnabled = true;
+            Assert.IsTrue(general.Enabled.GlideZoom);
+            Assert.HasCount(1, messages);
+        }
+
+        [TestMethod]
+        [DataRow(GpoRuleConfigured.NotConfigured)]
+        [DataRow(GpoRuleConfigured.Enabled)]
+        [DataRow(GpoRuleConfigured.Disabled)]
+        public void UnsupportedInstallationCannotEnableEvenWhenPolicyForcesOn(GpoRuleConfigured policy)
+        {
+            var general = new GeneralSettings();
+            general.Enabled.GlideZoom = true;
+            var messages = new List<string>();
+            var settingsUtils = new Mock<SettingsUtils>(new FileSystem(), null);
+            using var viewModel = CreateViewModel(settingsUtils, messages, general, () => policy, () => false);
+
+            Assert.IsFalse(viewModel.IsAvailable);
+            Assert.IsTrue(viewModel.IsUnavailable);
+            Assert.IsFalse(viewModel.IsEnabled);
+            Assert.IsFalse(viewModel.CanToggleEnabled);
+            Assert.AreEqual(policy is GpoRuleConfigured.Enabled or GpoRuleConfigured.Disabled, viewModel.IsEnabledGpoConfigured);
+            viewModel.IsEnabled = true;
+            viewModel.IsEnabled = false;
+
+            Assert.IsTrue(general.Enabled.GlideZoom);
+            Assert.HasCount(0, messages);
+            settingsUtils.Verify(utils => utils.SaveSettings(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        public void AvailabilityRefreshPreservesSavedPreference()
+        {
+            var general = new GeneralSettings();
+            general.Enabled.GlideZoom = true;
+            var messages = new List<string>();
+            var settingsUtils = new Mock<SettingsUtils>(new FileSystem(), null);
+            var available = true;
+            using var viewModel = CreateViewModel(settingsUtils, messages, general, getAvailability: () => available);
+
+            Assert.IsTrue(viewModel.IsEnabled);
+            available = false;
+            viewModel.RefreshEnabledState();
+            Assert.IsTrue(viewModel.IsUnavailable);
+            Assert.IsFalse(viewModel.IsEnabled);
+            Assert.IsFalse(viewModel.CanToggleEnabled);
+            Assert.IsFalse(viewModel.IsEnabledGpoConfigured);
+            viewModel.IsEnabled = false;
+            Assert.IsTrue(general.Enabled.GlideZoom);
+
+            available = true;
+            viewModel.RefreshEnabledState();
+            Assert.IsTrue(viewModel.IsAvailable);
+            Assert.IsTrue(viewModel.IsEnabled);
+            Assert.IsTrue(viewModel.CanToggleEnabled);
+            Assert.HasCount(0, messages);
+        }
+
+        [TestMethod]
+        [DataRow(@"C:\Program Files\PowerToys", true)]
+        [DataRow(@"c:\PROGRAM FILES\PowerToys\", true)]
+        [DataRow(@"C:\Program Files (x86)\PowerToys", true)]
+        [DataRow(@"C:\Windows\System32\PowerToys", true)]
+        [DataRow(@"C:\Program Files", false)]
+        [DataRow(@"C:\Program FilesOther\PowerToys", false)]
+        [DataRow(@"C:\Windows\Temp\PowerToys", false)]
+        [DataRow(@"C:\Users\user\AppData\Local\PowerToys", false)]
+        [DataRow(@"C:\Tools\PowerToys", false)]
+        [DataRow(@"\\server\Program Files\PowerToys", false)]
+        [DataRow(@"\\?\C:\Program Files\PowerToys", false)]
+        [DataRow(@"C:Program Files\PowerToys", false)]
+        [DataRow("C:/Program Files/PowerToys", false)]
+        [DataRow(@"C:\Program Files\..\PowerToys", false)]
+        [DataRow(@"C:\Program Files\.\PowerToys", false)]
+        [DataRow(@"C:\Program Files\\PowerToys", false)]
+        [DataRow(@"C:\Program Files\PowerToys.", false)]
+        [DataRow(@"C:\Program Files\PowerToys ", false)]
+        [DataRow(@"C:\Program Files\PowerToys:stream", false)]
+        [DataRow(@"C:\Program Files\Power*Toys", false)]
+        [DataRow("", false)]
+        [DataRow(null, false)]
+        public void AvailabilityRequiresCanonicalSecureRootAncestry(string path, bool expected)
+        {
+            Assert.AreEqual(expected, ModuleAvailabilityHelper.IsSupportedGlideZoomInstallPath(path, @"C:\Program Files", @"C:\Program Files (x86)", @"C:\Windows\System32"));
+        }
+
+        [TestMethod]
+        [DataRow(@"C:\Program Files\PowerToys", @"C:\Program Files\PowerToys", @"C:\Program Files", @"C:\Program Files", true)]
+        [DataRow(@"C:\Program Files\PowerToys", @"C:\Users\user\PowerToys", @"C:\Program Files", @"C:\Program Files", false)]
+        [DataRow(@"C:\Users\user\PowerToys", @"C:\Program Files\PowerToys", @"C:\Program Files", @"C:\Program Files", false)]
+        [DataRow(@"C:\Program Files\PowerToys", @"\\server\Program Files\PowerToys", @"C:\Program Files", @"C:\Program Files", false)]
+        [DataRow(@"C:\Program Files\PowerToys", @"D:\Program Files\PowerToys", @"C:\Program Files", @"D:\Program Files", true)]
+        [DataRow(@"C:\Program Files\PowerToys", @"C:\Windows\System32\PowerToys", @"C:\Program Files", @"C:\Program Files", false)]
+        public void AvailabilityRequiresBothOriginalAndResolvedSecureLocations(string directory, string resolvedDirectory, string secureRoot, string resolvedSecureRoot, bool expected)
+        {
+            Assert.AreEqual(expected, ModuleAvailabilityHelper.IsSupportedGlideZoomInstallation(directory, resolvedDirectory, secureRoot, resolvedSecureRoot));
+        }
+
+        [TestMethod]
+        public void AvailabilityResolvesEveryRequiredRuntimeFile()
+        {
+            var resolvedFiles = new List<string>();
+            var available = ModuleAvailabilityHelper.AreGlideZoomFilesAvailable(@"C:\Program Files\PowerToys", @"C:\Program Files", @"D:\Program Files", path =>
+            {
+                resolvedFiles.Add(path);
+                return path.Replace(@"C:\Program Files", @"D:\Program Files", StringComparison.Ordinal);
+            });
+
+            Assert.IsTrue(available);
+            CollectionAssert.AreEqual(RuntimeFilePaths, resolvedFiles);
+        }
+
+        [TestMethod]
+        [DataRow("PowerToys.exe", true)]
+        [DataRow("PowerToys.GlideZoomModuleInterface.dll", true)]
+        [DataRow("PowerToys.GlideZoom.exe", true)]
+        [DataRow("PowerToys.exe", false)]
+        [DataRow("PowerToys.GlideZoomModuleInterface.dll", false)]
+        [DataRow("PowerToys.GlideZoom.exe", false)]
+        public void MissingOrReparseOutsideRuntimeFileMakesModuleUnavailable(string file, bool missing)
+        {
+            var available = ModuleAvailabilityHelper.AreGlideZoomFilesAvailable(@"C:\Program Files\PowerToys", @"C:\Program Files", @"C:\Program Files", path =>
+            {
+                if (path.EndsWith("\\" + file, StringComparison.Ordinal))
+                {
+                    return missing ? null : @"C:\Users\user\PowerToys\" + file;
+                }
+
+                return path;
+            });
+
+            Assert.IsFalse(available);
+        }
+
+        [TestMethod]
+        public void UnavailableModuleDisablesItsToggleWithoutClaimingPolicyControl()
+        {
+            var item = new ModuleListItem();
+            var notifications = new List<string>();
+            item.PropertyChanged += (_, args) => notifications.Add(args.PropertyName);
+
+            Assert.IsTrue(item.IsAvailable);
+            Assert.IsTrue(item.IsToggleEnabled);
+            item.IsAvailable = false;
+            Assert.IsFalse(item.IsToggleEnabled);
+            Assert.IsFalse(item.IsLocked);
+            CollectionAssert.Contains(notifications, nameof(ModuleListItem.IsAvailable));
+            CollectionAssert.Contains(notifications, nameof(ModuleListItem.IsToggleEnabled));
+
+            item.IsLocked = true;
+            item.IsAvailable = true;
+            Assert.IsFalse(item.IsToggleEnabled);
+            item.IsLocked = false;
+            Assert.IsTrue(item.IsToggleEnabled);
+            Assert.IsTrue(ModuleAvailabilityHelper.IsModuleAvailable(ModuleType.ZoomIt));
+            Assert.IsTrue(ModuleAvailabilityHelper.IsModuleAvailable(ModuleType.GeneralSettings));
+        }
+
+        private static GlideZoomViewModel CreateViewModel(Mock<SettingsUtils> settingsUtils, List<string> messages, GeneralSettings general = null, Func<GpoRuleConfigured> getEnabledPolicy = null, Func<bool> getAvailability = null)
         {
             var generalRepository = new Mock<ISettingsRepository<GeneralSettings>>();
             generalRepository.SetupGet(repository => repository.SettingsConfig).Returns(general ?? new GeneralSettings());
             var moduleRepository = new Mock<ISettingsRepository<GlideZoomSettings>>();
             moduleRepository.SetupGet(repository => repository.SettingsConfig).Returns(new GlideZoomSettings());
 
-            return new GlideZoomViewModel(settingsUtils.Object, generalRepository.Object, moduleRepository.Object, message =>
-            {
-                messages.Add(message);
-                return 0;
-            });
+            return new GlideZoomViewModel(
+                settingsUtils.Object,
+                generalRepository.Object,
+                moduleRepository.Object,
+                message =>
+                {
+                    messages.Add(message);
+                    return 0;
+                },
+                getEnabledPolicy ?? (() => GpoRuleConfigured.NotConfigured),
+                getAvailability ?? (() => true));
         }
     }
 }

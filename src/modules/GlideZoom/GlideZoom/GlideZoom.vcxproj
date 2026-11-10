@@ -34,6 +34,9 @@
       <GenerateWindowsMetadata>false</GenerateWindowsMetadata>
       <AdditionalDependencies>user32.lib;shell32.lib;shlwapi.lib;windowsapp.lib;advapi32.lib;gdi32.lib;ole32.lib;wtsapi32.lib;uuid.lib;hid.lib;dwmapi.lib;d3d11.lib;dxgi.lib;d3dcompiler.lib;runtimeobject.lib;dcomp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <ResourceCompile>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory);$(RepoRoot)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -43,10 +46,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="control_channel.h" />
+    <ClInclude Include="Resources.h" />
+    <ClInclude Include="ui_resource_format.h" />
     <ClInclude Include="cursor_coverage.h" />
     <ClInclude Include="cursor_visibility_win32.h" />
     <ClInclude Include="cursor_visibility.h" />
     <ClInclude Include="desktop_context.h" />
+    <ClInclude Include="deployment_policy.h" />
+    <ClInclude Include="deployment_win32.h" />
     <ClInclude Include="foreground_context.h" />
     <ClInclude Include="frame_clock_win32.h" />
     <ClInclude Include="frame_stall_policy.h" />
@@ -104,7 +111,10 @@
     <ClInclude Include="zoom_session.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="app.rc" />
+    <ResourceCompile Include="Generated Files\app.rc" />
+    <None Include="app.rc" />
+    <None Include="resource.base.h" />
+    <EmbeddedResource Include="Resource.resx" />
     <Manifest Include="app.manifest" />
     <Image Include="glidezoom.ico" />
     <None Include="LICENSE" />
@@ -121,6 +131,10 @@
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
   </ItemGroup>
+  <Target Name="GenerateGlideZoomResources" BeforeTargets="PrepareForBuild">
+    <Exec Command="powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;$(RepoRoot)tools\build\convert-resx-to-rc.ps1&quot; &quot;$(MSBuildProjectDirectory)&quot; resource.base.h resource.h app.rc app.rc" />
+    <Error Condition="!Exists('$(MSBuildProjectDirectory)\Generated Files\resource.h') Or !Exists('$(MSBuildProjectDirectory)\Generated Files\app.rc')" Text="GlideZoom resource generation failed." />
+  </Target>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <Import Project="$(RepoRoot)deps\spdlog.props" />
   <ImportGroup Label="ExtensionTargets">

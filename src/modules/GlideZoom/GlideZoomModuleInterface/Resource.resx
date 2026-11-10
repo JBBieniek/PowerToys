@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="ModuleDescription" xml:space="preserve"><value>Interactive desktop magnification with keyboard, mouse and touchpad controls.</value></data>
+  <data name="ConfigWheelModifier" xml:space="preserve"><value>Wheel modifier</value></data>
+  <data name="ConfigMaximumZoom" xml:space="preserve"><value>Maximum zoom</value></data>
+  <data name="ConfigSensitivity" xml:space="preserve"><value>Gesture sensitivity</value></data>
+  <data name="ConfigZoomMultiplier" xml:space="preserve"><value>Key and wheel multiplier</value></data>
+  <data name="ConfigEdgePanMultiplier" xml:space="preserve"><value>Edge pan multiplier</value></data>
+  <data name="ConfigZoomScope" xml:space="preserve"><value>Zoom target</value></data>
+  <data name="ConfigScopeIndicatorMode" xml:space="preserve"><value>View indicator visibility</value></data>
+  <data name="ConfigScopeIndicatorStyle" xml:space="preserve"><value>View indicator style</value></data>
+  <data name="ConfigPointerSpeed" xml:space="preserve"><value>Pointer speed (%)</value></data>
+  <data name="ConfigOverviewOpacity" xml:space="preserve"><value>Overview opacity (%)</value></data>
+  <data name="ConfigScopeIndicatorSize" xml:space="preserve"><value>Overview width percent</value></data>
+  <data name="ConfigScopeIndicatorOpacity" xml:space="preserve"><value>View indicator opacity percent</value></data>
+  <data name="ConfigScopeIndicatorBorder" xml:space="preserve"><value>View indicator border width</value></data>
+  <data name="ConfigScopeIndicatorDuration" xml:space="preserve"><value>View indicator duration milliseconds</value></data>
+  <data name="ConfigWheelAccelerationLimit" xml:space="preserve"><value>Maximum fast-scroll boost</value></data>
+  <data name="ConfigScopeIndicatorX" xml:space="preserve"><value>Overview horizontal position percent</value></data>
+  <data name="ConfigScopeIndicatorY" xml:space="preserve"><value>Overview vertical position percent</value></data>
+  <data name="ConfigScopeIndicatorFade" xml:space="preserve"><value>View indicator fade milliseconds</value></data>
+  <data name="ConfigDoubleControl" xml:space="preserve"><value>Double-tap Left Ctrl and hold</value></data>
+  <data name="ConfigModifiedDoubleClick" xml:space="preserve"><value>Modified double-click and hold</value></data>
+  <data name="ConfigReverseDirection" xml:space="preserve"><value>Reverse wheel and drag direction</value></data>
+  <data name="ConfigCenterFollow" xml:space="preserve"><value>Keep pointer centered</value></data>
+  <data name="ConfigThreeFingerTouchpad" xml:space="preserve"><value>Three-finger touchpad gesture</value></data>
+  <data name="ConfigZoomScaledPointer" xml:space="preserve"><value>Match pointer speed to zoom</value></data>
+  <data name="ConfigScopeIndicatorDetails" xml:space="preserve"><value>View indicator coordinates and zoom</value></data>
+  <data name="ConfigWheelAcceleration" xml:space="preserve"><value>Accelerate fast wheel scrolling</value></data>
+  <data name="ModuleName" xml:space="preserve"><value>GlideZoom</value></data>
+</root>

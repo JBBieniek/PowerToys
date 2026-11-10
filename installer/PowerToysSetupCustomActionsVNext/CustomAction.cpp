@@ -6,6 +6,8 @@
 #include <filesystem>
 #include <fstream>
 #include <string_view>
+#include <algorithm>
+#include <tlhelp32.h>
 
 #include "../../src/common/logger/logger.h"
 #include "../../src/common/utils/gpo.h"
@@ -14,6 +16,7 @@
 #include "../../src/common/updating/installer.h"
 #include "../../src/common/version/version.h"
 #include "../../src/common/Telemetry/EtwTrace/EtwTrace.h"
+#include "../../src/modules/GlideZoom/GlideZoom/deployment_win32.h"
 #include "../../src/common/utils/package.h"
 
 #include <winrt/Windows.ApplicationModel.h>
@@ -1545,6 +1548,183 @@ UINT __stdcall CleanNewPlusRuntimeRegistryCA(MSIHANDLE hInstall)
     }
     er = er == ERROR_SUCCESS ? (SUCCEEDED(hr) ? ERROR_SUCCESS : ERROR_INSTALL_FAILURE) : er;
     return WcaFinalize(er);
+}
+
+namespace
+{
+    class GlideZoomProcess
+    {
+    public:
+        GlideZoomProcess(DWORD processId, HANDLE processHandle) noexcept :
+            id(processId), handle(processHandle) {}
+        ~GlideZoomProcess()
+        {
+            if (handle)
+                CloseHandle(handle);
+        }
+        GlideZoomProcess(const GlideZoomProcess&) = delete;
+        GlideZoomProcess& operator=(const GlideZoomProcess&) = delete;
+        GlideZoomProcess& operator=(GlideZoomProcess&&) = delete;
+        GlideZoomProcess(GlideZoomProcess&& other) noexcept :
+            id(other.id), handle(other.handle) { other.handle = nullptr; }
+        DWORD id;
+        HANDLE handle;
+    };
+
+    bool GlideZoomImagePaths(std::wstring directory, std::vector<std::wstring>& images, bool requireExisting = false)
+    {
+        using namespace glide::deployment;
+        if (directory.empty())
+            return CanVerifyPreviousInstallation(requireExisting, false);
+        if (!CanonicalPath(directory))
+            return false;
+        directory = TrimDirectory(directory);
+        images.push_back(directory + L"\\PowerToys.GlideZoom.exe");
+        const DWORD attributes = GetFileAttributesW(directory.c_str());
+        if (attributes == INVALID_FILE_ATTRIBUTES)
+        {
+            const DWORD error = GetLastError();
+            return CanVerifyPreviousInstallation(requireExisting, false) &&
+                   (error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND);
+        }
+        if (!(attributes & FILE_ATTRIBUTE_DIRECTORY))
+            return false;
+        std::wstring final;
+        if (!FinalPath(directory, true, final))
+            return false;
+        images.push_back(std::wstring(TrimDirectory(final)) + L"\\PowerToys.GlideZoom.exe");
+        return true;
+    }
+
+    // Inspect every session, retaining a verified process handle until exit.
+    // The guardian uses the SAME image as the engine and is deliberately included.
+    // Never send messages, launch, terminate, or recover magnification from MSI.
+    glide::deployment::Scan ScanGlideZoom(const std::vector<std::wstring>& images, std::vector<GlideZoomProcess>& retained)
+    {
+        using namespace glide::deployment;
+        bool running = false;
+        for (const auto& process : retained)
+        {
+            const DWORD state = WaitForSingleObject(process.handle, 0);
+            if (state != WAIT_OBJECT_0 && state != WAIT_TIMEOUT)
+                return Scan::Unknown;
+            running = running || state == WAIT_TIMEOUT;
+        }
+        const HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (snapshot == INVALID_HANDLE_VALUE)
+            return Scan::Unknown;
+        struct SnapshotClose
+        {
+            HANDLE handle;
+            ~SnapshotClose() { CloseHandle(handle); }
+        } snapshotClose{ snapshot };
+        PROCESSENTRY32W entry{};
+        entry.dwSize = sizeof(entry);
+        if (!Process32FirstW(snapshot, &entry))
+            return GetLastError() == ERROR_NO_MORE_FILES ? (running ? Scan::Running : Scan::Empty) : Scan::Unknown;
+        do
+        {
+            if (_wcsicmp(entry.szExeFile, L"PowerToys.GlideZoom.exe") != 0)
+                continue;
+            const auto known = std::find_if(retained.begin(), retained.end(), [&](const auto& process) {
+                return process.id == entry.th32ProcessID && WaitForSingleObject(process.handle, 0) == WAIT_TIMEOUT;
+            });
+            if (known != retained.end())
+                continue;
+            HANDLE handle = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, entry.th32ProcessID);
+            if (!handle)
+            {
+                if (GetLastError() == ERROR_INVALID_PARAMETER)
+                    continue; // Snapshot entry already exited.
+                WcaLog(LOGMSG_STANDARD, "Cannot inspect GlideZoom PID %lu; update must wait for its owner to close it (error %lu)", entry.th32ProcessID, GetLastError());
+                return Scan::Unknown;
+            }
+            GlideZoomProcess process(entry.th32ProcessID, handle);
+            if (WaitForSingleObject(handle, 0) == WAIT_OBJECT_0)
+                continue;
+            std::wstring image(32768, L'\0');
+            DWORD length = static_cast<DWORD>(image.size());
+            DWORD session = 0;
+            if (!QueryFullProcessImageNameW(handle, 0, image.data(), &length) ||
+                !ProcessIdToSessionId(entry.th32ProcessID, &session))
+            {
+                if (WaitForSingleObject(handle, 0) == WAIT_OBJECT_0)
+                    continue;
+                return Scan::Unknown;
+            }
+            image.resize(length);
+            std::wstring final;
+            if (!FinalPath(image, false, final))
+            {
+                if (WaitForSingleObject(handle, 0) == WAIT_OBJECT_0)
+                    continue;
+                return Scan::Unknown;
+            }
+            const bool matches = std::any_of(images.begin(), images.end(), [&](const auto& installed) {
+                return CompareStringOrdinal(image.c_str(), -1, installed.c_str(), -1, TRUE) == CSTR_EQUAL ||
+                       CompareStringOrdinal(final.c_str(), -1, installed.c_str(), -1, TRUE) == CSTR_EQUAL;
+            });
+            if (!matches)
+                continue;
+            if (retained.size() >= 4096)
+                return Scan::Unknown;
+            WcaLog(LOGMSG_STANDARD, "Waiting for installed GlideZoom engine/recovery PID %lu in session %lu: %ls", entry.th32ProcessID, session, final.c_str());
+            retained.push_back(std::move(process));
+            running = true;
+        } while (Process32NextW(snapshot, &entry));
+        if (GetLastError() != ERROR_NO_MORE_FILES)
+            return Scan::Unknown;
+        return running ? Scan::Running : Scan::Empty;
+    }
+}
+
+UINT __stdcall VerifyGlideZoomStoppedCA(MSIHANDLE hInstall)
+{
+    HRESULT hr = WcaInitialize(hInstall, "VerifyGlideZoomStoppedCA");
+    if (FAILED(hr))
+        return WcaFinalize(ERROR_INSTALL_FAILURE);
+    LPWSTR current = nullptr, previous = nullptr, upgrades = nullptr;
+    UINT result = ERROR_INSTALL_FAILURE;
+    try
+    {
+        hr = WcaGetProperty(L"INSTALLFOLDER", &current);
+        if (SUCCEEDED(hr))
+            hr = WcaGetProperty(L"PREVIOUSINSTALLFOLDER", &previous);
+        if (SUCCEEDED(hr))
+            hr = WcaGetProperty(L"WIX_UPGRADE_DETECTED", &upgrades);
+        const bool upgrading = upgrades && *upgrades;
+        std::vector<std::wstring> images;
+        if (SUCCEEDED(hr) && current && *current &&
+            GlideZoomImagePaths(current, images) && GlideZoomImagePaths(previous ? previous : L"", images, upgrading))
+        {
+            using namespace glide::deployment;
+            std::vector<GlideZoomProcess> processes;
+            ShutdownPolicy policy;
+            for (;;)
+            {
+                const auto decision = policy.Observe(GetTickCount64(), ScanGlideZoom(images, processes));
+                if (decision == ShutdownDecision::Complete)
+                {
+                    WcaLog(LOGMSG_STANDARD, "Installed GlideZoom engine and recovery processes are stopped");
+                    result = ERROR_SUCCESS;
+                    break;
+                }
+                if (decision == ShutdownDecision::Refuse)
+                    break;
+                Sleep(100);
+            }
+        }
+    }
+    catch (...)
+    {
+        // Failure to observe restoration is never permission to kill its owner.
+    }
+    ReleaseStr(current);
+    ReleaseStr(previous);
+    ReleaseStr(upgrades);
+    if (result != ERROR_SUCCESS)
+        WcaLog(LOGMSG_STANDARD, "GlideZoom shutdown/recovery could not be verified. Close PowerToys in every session, return to the normal desktop, and retry; no GlideZoom process was terminated");
+    return WcaFinalize(result);
 }
 
 UINT __stdcall TerminateProcessesCA(MSIHANDLE hInstall)

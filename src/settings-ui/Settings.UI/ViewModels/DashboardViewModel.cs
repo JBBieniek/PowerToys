@@ -216,11 +216,13 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
                 }
 
                 GpoRuleConfigured gpo = ModuleGpoHelper.GetModuleGpoConfiguration(moduleType);
+                bool available = ModuleAvailabilityHelper.IsModuleAvailable(moduleType);
                 var newItem = new DashboardListItem()
                 {
                     Tag = moduleType,
                     Label = resourceLoader.GetString(ModuleHelper.GetModuleLabelResourceName(moduleType)),
-                    IsEnabled = gpo == GpoRuleConfigured.Enabled || (gpo != GpoRuleConfigured.Disabled && ModuleHelper.GetIsModuleEnabled(generalSettingsConfig, moduleType)),
+                    IsAvailable = available,
+                    IsEnabled = available && (gpo == GpoRuleConfigured.Enabled || (gpo != GpoRuleConfigured.Disabled && ModuleHelper.GetIsModuleEnabled(generalSettingsConfig, moduleType))),
                     IsLocked = gpo == GpoRuleConfigured.Enabled || gpo == GpoRuleConfigured.Disabled,
                     Icon = ModuleHelper.GetModuleTypeFluentIconName(moduleType),
                     IsNew = moduleType == ModuleType.AutoHideCursor,
@@ -300,12 +302,14 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
             foreach (var item in _moduleItems)
             {
                 GpoRuleConfigured gpo = ModuleGpoHelper.GetModuleGpoConfiguration(item.Tag);
+                bool available = ModuleAvailabilityHelper.IsModuleAvailable(item.Tag);
+                item.IsAvailable = available;
 
                 // GPO can force-enable (Enabled) or force-disable (Disabled) a module.
                 // If Enabled: module is on and the user cannot disable it.
                 // If Disabled: module is off and the user cannot enable it.
                 // Otherwise, the setting is unlocked and the user can enable/disable it.
-                bool newEnabledState = gpo == GpoRuleConfigured.Enabled || (gpo != GpoRuleConfigured.Disabled && ModuleHelper.GetIsModuleEnabled(generalSettingsConfig, item.Tag));
+                bool newEnabledState = available && (gpo == GpoRuleConfigured.Enabled || (gpo != GpoRuleConfigured.Disabled && ModuleHelper.GetIsModuleEnabled(generalSettingsConfig, item.Tag)));
 
                 // Lock the toggle when GPO is controlling the module.
                 bool newLockedState = gpo == GpoRuleConfigured.Enabled || gpo == GpoRuleConfigured.Disabled;
@@ -334,6 +338,15 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
         {
             var dashboardListItem = (DashboardListItem)item;
             var isEnabled = dashboardListItem.IsEnabled;
+
+            var gpo = ModuleGpoHelper.GetModuleGpoConfiguration(dashboardListItem.Tag);
+            dashboardListItem.IsAvailable = ModuleAvailabilityHelper.IsModuleAvailable(dashboardListItem.Tag);
+            dashboardListItem.IsLocked = gpo is GpoRuleConfigured.Enabled or GpoRuleConfigured.Disabled;
+            if (!dashboardListItem.IsToggleEnabled)
+            {
+                dashboardListItem.UpdateStatus(dashboardListItem.IsAvailable && (gpo == GpoRuleConfigured.Enabled || (gpo != GpoRuleConfigured.Disabled && ModuleHelper.GetIsModuleEnabled(generalSettingsConfig, dashboardListItem.Tag))));
+                return;
+            }
 
             // Ignore toggle operations during sorting to prevent race conditions.
             // Revert the toggle state since UI already changed due to TwoWay binding.
@@ -446,6 +459,7 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
                     {
                         Icon = x.Icon,
                         IsLocked = x.IsLocked,
+                        IsAvailable = x.IsAvailable,
                         Label = x.Label,
                         Tag = x.Tag,
                         IsEnabled = x.IsEnabled,
@@ -469,6 +483,7 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
                     {
                         Icon = x.Icon,
                         IsLocked = x.IsLocked,
+                        IsAvailable = x.IsAvailable,
                         Label = x.Label,
                         Tag = x.Tag,
                         IsEnabled = x.IsEnabled,

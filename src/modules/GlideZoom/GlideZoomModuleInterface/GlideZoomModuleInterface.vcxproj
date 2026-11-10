@@ -30,10 +30,16 @@
       <EnableUAC>false</EnableUAC>
       <AdditionalDependencies>shell32.lib;shlwapi.lib;windowsapp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <ResourceCompile>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory);$(RepoRoot)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
-    <ResourceCompile Include="GlideZoomModuleInterface.rc" />
+    <ResourceCompile Include="Generated Files\GlideZoomModuleInterface.rc" />
+    <None Include="GlideZoomModuleInterface.rc" />
+    <None Include="resource.base.h" />
+    <EmbeddedResource Include="Resource.resx" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
@@ -48,6 +54,10 @@
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
   </ItemGroup>
+  <Target Name="GenerateGlideZoomInterfaceResources" BeforeTargets="PrepareForBuild">
+    <Exec Command="powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;$(RepoRoot)tools\build\convert-resx-to-rc.ps1&quot; &quot;$(MSBuildProjectDirectory)&quot; resource.base.h resource.h GlideZoomModuleInterface.rc GlideZoomModuleInterface.rc" />
+    <Error Condition="!Exists('$(MSBuildProjectDirectory)\Generated Files\resource.h') Or !Exists('$(MSBuildProjectDirectory)\Generated Files\GlideZoomModuleInterface.rc')" Text="GlideZoom resource generation failed." />
+  </Target>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <Import Project="$(RepoRoot)packages\Microsoft.Windows.CppWinRT.2.0.250303.1\build\native\Microsoft.Windows.CppWinRT.targets" Condition="Exists('$(RepoRoot)packages\Microsoft.Windows.CppWinRT.2.0.250303.1\build\native\Microsoft.Windows.CppWinRT.targets')" />
   <Import Project="$(RepoRoot)deps\spdlog.props" />

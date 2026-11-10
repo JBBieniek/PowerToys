@@ -320,4 +320,8 @@ namespace winrt::PowerToys::GPOWrapper::implementation
     {
         return static_cast<GpoRuleConfigured>(powertoys_gpo::getConfiguredNewPlusHideBuiltInNewContextMenuValue());
     }
+    GpoRuleConfigured GPOWrapper::GetConfiguredAllUtilitiesEnabledValue()
+    {
+        return static_cast<GpoRuleConfigured>(powertoys_gpo::getConfiguredValue(powertoys_gpo::POLICY_CONFIGURE_ENABLED_GLOBAL_ALL_UTILITIES));
+    }
 }

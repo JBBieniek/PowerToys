@@ -221,4 +221,3 @@ NTSTATUS HidP_GetUsages(HIDP_REPORT_TYPE type,USAGE page,USHORT link,USAGE* usag
     } else return HIDP_STATUS_FAILURE;
     return HIDP_STATUS_SUCCESS;
 }
-

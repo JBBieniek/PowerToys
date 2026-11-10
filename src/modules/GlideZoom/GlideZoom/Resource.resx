@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="NativeUnknownWindowsError" xml:space="preserve"><value>Unknown Windows error</value></data>
+  <data name="NativeThePowerToysRunnerOrItsControlEventsAreUnavailable" xml:space="preserve"><value>The PowerToys runner or its control events are unavailable.</value></data>
+  <data name="NativeCouldNotRegisterTheApplicationWindow" xml:space="preserve"><value>Could not register the application window.</value></data>
+  <data name="NativePowerToysGlideZoom" xml:space="preserve"><value>PowerToys GlideZoom</value></data>
+  <data name="NativeGlideZoom062AccessibilityZoom" xml:space="preserve"><value>GlideZoom 0.6.2 - Accessibility Zoom</value></data>
+  <data name="NativeCouldNotCreateTheApplicationWindow" xml:space="preserve"><value>Could not create the application window.</value></data>
+  <data name="NativeWindowsCouldNotInitializeScreenMagnification" xml:space="preserve"><value>Windows could not initialize screen magnification.</value></data>
+  <data name="NativeGPUMonitorZoomCouldNotInitializeWindows10Version" xml:space="preserve"><value>GPU monitor zoom could not initialize. Windows 10 version 2004 or newer and Windows Graphics Capture are required.</value></data>
+  <data name="NativeWindowsCouldNotReadTheDesktopMagnificationState" xml:space="preserve"><value>Windows could not read the desktop magnification state.</value></data>
+  <data name="NativeAnotherMagnifierIsActiveCloseItBeforeStartingGlideZoom" xml:space="preserve"><value>Another magnifier is active. Close it before starting GlideZoom. GlideZoom has left its transforms unchanged.</value></data>
+  <data name="NativeGlideZoom" xml:space="preserve"><value>GlideZoom</value></data>
+  <data name="NativeWindowsDidNotProvideUsableDisplayGeometry" xml:space="preserve"><value>Windows did not provide usable display geometry.</value></data>
+  <data name="NativeTheRecoveryProcessCouldNotStart" xml:space="preserve"><value>The recovery process could not start.</value></data>
+  <data name="NativeCouldNotStartTheDedicatedInputThread" xml:space="preserve"><value>Could not start the dedicated input thread.</value></data>
+  <data name="NativeCouldNotSubscribeToSessionChanges" xml:space="preserve"><value>Could not subscribe to session changes.</value></data>
+  <data name="NativeCouldNotCreateTrayControls" xml:space="preserve"><value>Could not create tray controls.</value></data>
+  <data name="NativeCouldNotStartTheAnimationClock" xml:space="preserve"><value>Could not start the animation clock.</value></data>
+  <data name="NativeCouldNotStartTheModalLoopTimer" xml:space="preserve"><value>Could not start the modal-loop timer.</value></data>
+  <data name="NativeGlideZoomSettingsWereInvalidSafeDefaultsAreInUse" xml:space="preserve"><value>GlideZoom settings were invalid. Safe defaults are in use. Update the options in PowerToys Settings to save a valid configuration.</value></data>
+  <data name="NativeTheSettingsFileWasIncompleteOrInvalidSafeDefaults" xml:space="preserve"><value>The settings file was incomplete or invalid. Safe defaults are in use. The original file has been left unchanged; Save settings replaces it with a complete configuration.</value></data>
+  <data name="NativeGlideZoomSettingsCouldNotBeReadSafeDefaultsAre" xml:space="preserve"><value>GlideZoom settings could not be read. Safe defaults are in use. Review the GlideZoom options in PowerToys Settings and check access to your PowerToys settings folder.</value></data>
+  <data name="NativeSettingsCouldNotBeReadSafelySafeDefaultsAre" xml:space="preserve"><value>Settings could not be read safely. Safe defaults are in use. Saving is disabled for this run; check the profile folder and restart.</value></data>
+  <data name="NativeTheWindowsAnimationMessageLoopStoppedUnexpectedly" xml:space="preserve"><value>The Windows animation/message loop stopped unexpectedly.</value></data>
+  <data name="NativeInputOrRecoveryIsUnavailableRestartGlideZoomBeforeUsing" xml:space="preserve"><value>Input or recovery is unavailable. Restart GlideZoom before using zoom.</value></data>
+  <data name="NativeDisplayGeometryIsUnavailableGlideZoomRemainsPaused" xml:space="preserve"><value>Display geometry is unavailable. GlideZoom remains paused.</value></data>
+  <data name="NativeAnotherMagnifierIsActiveOrItsStateCouldNot" xml:space="preserve"><value>Another magnifier is active, or its state could not be verified. GlideZoom remains paused. Close the other magnifier, then resume from the tray.</value></data>
+  <data name="NativeCtrlAltEscIsAlreadyInUseGlideZoomRemains" xml:space="preserve"><value>Ctrl+Alt+Esc is already in use. GlideZoom remains paused because its emergency reset shortcut could not be reserved.</value></data>
+  <data name="NativeAnotherApplicationChangedDesktopMagnificationGlideZoomReleasedControlAnd" xml:space="preserve"><value>Another application changed desktop magnification. GlideZoom released control and paused without resetting that application's state.</value></data>
+  <data name="NativeGlideZoomCouldNotPresentOrVerifyZoomAndPaused" xml:space="preserve"><value>GlideZoom could not present or verify zoom and paused its controls. Recovery of its recognized display/input state has been requested. Check the display, then resume from the tray.</value></data>
+  <data name="NativeTheCurrentMonitorCouldNotReleaseItsZoomSafely" xml:space="preserve"><value>The current monitor could not release its zoom safely.</value></data>
+  <data name="NativeTheZoomedViewCouldNotBeCopiedNoNew" xml:space="preserve"><value>The zoomed view could not be copied. No new image was placed on the clipboard.</value></data>
+  <data name="NativeResumeGlideZoomBeforeCopyingTheViewNoScreenshotWas" xml:space="preserve"><value>Resume GlideZoom before copying the view. No screenshot was taken.</value></data>
+  <data name="NativeTheScreenshotCouldNotBePreparedTheDisplayState" xml:space="preserve"><value>The screenshot could not be prepared. The display state may have changed, the layout may exceed the capture size limit, or Windows may not have enough memory. No image was published.</value></data>
+  <data name="NativeTheDesktopDisplayLayoutOrMagnificationChangedWhileCopying" xml:space="preserve"><value>The desktop, display layout or magnification changed while copying. The screenshot was abandoned. GlideZoom restores only state it can still verify as its own. Check the current view before resuming.</value></data>
+  <data name="NativeAnotherApplicationIsUsingTheClipboardTheExistingClipboard" xml:space="preserve"><value>Another application is using the clipboard. The existing clipboard was left unchanged. Try Copy zoomed view again.</value></data>
+  <data name="NativeWindowsClearedTheClipboardButCouldNotAcceptThe" xml:space="preserve"><value>Windows cleared the clipboard but could not accept the prepared image. The prior clipboard contents could not be preserved at this final step. Zoom was restored.</value></data>
+  <data name="NativeAMonitorViewOrItsInputHandoffCouldNot" xml:space="preserve"><value>A monitor view or its input handoff could not be verified.</value></data>
+  <data name="NativeGlideZoomFitWindow" xml:space="preserve"><value>GlideZoom - fit window</value></data>
+  <data name="NativeKeepEachMonitorSZoomUseOneViewOr" xml:space="preserve"><value>Keep each monitor's zoom, use one view, or link all monitors.</value></data>
+  <data name="NativeStarting100x" xml:space="preserve"><value>Starting  |  1.00x</value></data>
+  <data name="NativeLeftWinLeftAltTapOrHoldAlsoAnd" xml:space="preserve"><value>Left Win + Left Alt + = / -       Tap or hold (also + and numpad)\nChosen modifier + wheel          Uses zoom multiplier below\nCtrl + Left Alt + Space (hold)         Move up / down to zoom\nCtrl + Left Alt + Z / + Shift + Z      Current monitor / all together\nCtrl + Left Alt + I / V                 Independent monitors / view indicator\nCtrl + Left Alt + Esc / S              Reset all / copy view (brief 1x flash)</value></data>
+  <data name="NativeWheelModifier" xml:space="preserve"><value>Wheel modifier</value></data>
+  <data name="NativeLeftCtrlLeftAltDefault" xml:space="preserve"><value>Left Ctrl + Left Alt (default)</value></data>
+  <data name="NativeCtrlMacOSStyle" xml:space="preserve"><value>Ctrl (macOS-style)</value></data>
+  <data name="NativeLeftAlt" xml:space="preserve"><value>Left Alt</value></data>
+  <data name="NativeWindowsKey" xml:space="preserve"><value>Windows key</value></data>
+  <data name="NativeMaximumZoom" xml:space="preserve"><value>Maximum zoom</value></data>
+  <data name="NativeGestureSensitivity" xml:space="preserve"><value>Gesture sensitivity</value></data>
+  <data name="NativeGentle" xml:space="preserve"><value>Gentle</value></data>
+  <data name="NativeBalanced" xml:space="preserve"><value>Balanced</value></data>
+  <data name="NativeFast" xml:space="preserve"><value>Fast</value></data>
+  <data name="NativeDefaultZoomTarget" xml:space="preserve"><value>Default zoom target</value></data>
+  <data name="NativeSelectedMonitorOneView" xml:space="preserve"><value>Selected monitor (one view)</value></data>
+  <data name="NativeAllMonitorsTogether" xml:space="preserve"><value>All monitors together</value></data>
+  <data name="NativeIndependentMonitors" xml:space="preserve"><value>Independent monitors</value></data>
+  <data name="NativeKeyWheelMultiplier" xml:space="preserve"><value>Key / wheel multiplier</value></data>
+  <data name="NativeEdgePanMultiplier" xml:space="preserve"><value>Edge pan multiplier</value></data>
+  <data name="NativeZoomStep001xTimesMultiplierEdgePan1" xml:space="preserve"><value>Zoom step: 0.01x times multiplier. Edge pan: 1 = original, 3 = faster.</value></data>
+  <data name="NativeDoubleTapLeftCtrlAndHoldOptional" xml:space="preserve"><value>Double-tap Left Ctrl and hold (optional)</value></data>
+  <data name="NativeCtrlLeftAltLeftDoubleClickAndHoldReserves" xml:space="preserve"><value>Ctrl+Left Alt + left double-click and hold (reserves matching clicks)</value></data>
+  <data name="NativeThreeFingerTouchpadDoubleTapAndHoldOptional" xml:space="preserve"><value>Three-finger touchpad double-tap and hold (optional)</value></data>
+  <data name="NativeReverseWheelAndDragDirection" xml:space="preserve"><value>Reverse wheel and drag direction</value></data>
+  <data name="NativeKeepPointerCenteredDisablesEdgePanMultiplier" xml:space="preserve"><value>Keep pointer centered (disables edge pan multiplier)</value></data>
+  <data name="NativeAdjustPointerSpeedWithZoomRequiredForEdgePan" xml:space="preserve"><value>Adjust pointer speed with zoom (required for edge pan multiplier)</value></data>
+  <data name="NativePointerSpeed" xml:space="preserve"><value>Pointer speed (%)</value></data>
+  <data name="Native25300100NormalAppliesOnlyWhileZoomed" xml:space="preserve"><value>25-300; 100 = normal. Applies only while zoomed.</value></data>
+  <data name="NativeThreeFingerGestureDisabled" xml:space="preserve"><value>Three-finger gesture: disabled</value></data>
+  <data name="NativeChangeTheseOptionsInPowerToysSettingsTouchpadSetWindows" xml:space="preserve"><value>Change these options in PowerToys Settings.\nTouchpad: set Windows three-finger Taps and Swipes to Nothing.</value></data>
+  <data name="NativeTouchpadTapLiftTapAndHoldWithThreeFingers" xml:space="preserve"><value>Touchpad: tap, lift, tap-and-hold with three fingers; move up/down.\n0.01x steps. Set Windows three-finger Taps and Swipes to Nothing.</value></data>
+  <data name="NativeOpenSettings" xml:space="preserve"><value>Open settings</value></data>
+  <data name="NativeSaveSettings" xml:space="preserve"><value>Save settings</value></data>
+  <data name="NativeResetZoom" xml:space="preserve"><value>Reset zoom</value></data>
+  <data name="NativeCopyZoomedView" xml:space="preserve"><value>Copy zoomed view</value></data>
+  <data name="NativeMinimizeToTray" xml:space="preserve"><value>Minimize to tray</value></data>
+  <data name="NativeEnterAWholeZoomMultiplierFrom1To100" xml:space="preserve"><value>Enter a whole zoom multiplier from 1 to 100. For example, 1 changes zoom by 0.01x per key/wheel step; 10 changes it by 0.10x. Gesture sensitivity is separate.</value></data>
+  <data name="NativeEnterAWholeEdgePanMultiplierFrom1To" xml:space="preserve"><value>Enter a whole edge pan multiplier from 1 to 10. 1 preserves the original speed; 3 moves the view faster at the five-pixel edge. Enable Adjust pointer speed with zoom and leave Keep pointer centered unchecked.</value></data>
+  <data name="NativeEnterAWholePointerSpeedFrom25To300" xml:space="preserve"><value>Enter a whole pointer speed from 25 to 300 percent. 100 preserves normal speed; automatic zoom adjustment can be enabled separately.</value></data>
+  <data name="NativeTheSettingsFileChangedOutsideGlideZoomYourChangesWere" xml:space="preserve"><value>The settings file changed outside GlideZoom. Your changes were not applied or saved. Restart GlideZoom to load that file before editing again.</value></data>
+  <data name="NativeTheCompleteSettingsUpdateCouldNotBeSavedThe" xml:space="preserve"><value>The complete settings update could not be saved. The previous active configuration is still in use. Check your profile folder and try again.</value></data>
+  <data name="NativePowerToysSettingsCouldNotBeLocatedOpenItFrom" xml:space="preserve"><value>PowerToys Settings could not be located. Open it from the PowerToys tray icon.</value></data>
+  <data name="NativePowerToysSettingsCouldNotBeOpenedOpenItFrom" xml:space="preserve"><value>PowerToys Settings could not be opened. Open it from the PowerToys tray icon.</value></data>
+  <data name="NativePowerToysSettingsCouldNotBeReadAsAComplete" xml:space="preserve"><value>PowerToys settings could not be read as a complete valid configuration. The previous configuration remains active.</value></data>
+  <data name="NativeGlideZoomLeftClickToOpenRightClickForControls" xml:space="preserve"><value>GlideZoom - left-click to open, right-click for controls</value></data>
+  <data name="NativeWindowsCouldNotRestoreGlideZoomSTrayIconThe" xml:space="preserve"><value>Windows could not restore GlideZoom's tray icon. The window remains available. Try Minimize again after Explorer recovers; closing the window exits if the tray is still unavailable.</value></data>
+  <data name="NativeStoppingAfterError" xml:space="preserve"><value>Stopping after error</value></data>
+  <data name="NativeStopping" xml:space="preserve"><value>Stopping</value></data>
+  <data name="NativeWaitingToRestoreZoom" xml:space="preserve"><value>Waiting to restore zoom</value></data>
+  <data name="NativeSuspended" xml:space="preserve"><value>Suspended</value></data>
+  <data name="NativePaused" xml:space="preserve"><value>Paused</value></data>
+  <data name="NativeDragToZoom" xml:space="preserve"><value>Drag to zoom</value></data>
+  <data name="NativeReady" xml:space="preserve"><value>Ready</value></data>
+  <data name="NativeViewCopiedToClipboard" xml:space="preserve"><value>View copied to clipboard</value></data>
+  <data name="NativePointerAdjustmentPaused" xml:space="preserve"><value>  |  Pointer adjustment paused</value></data>
+  <data name="NativeThreeFingerGestureContactReportsDetected" xml:space="preserve"><value>Three-finger gesture: contact reports detected</value></data>
+  <data name="NativeThreeFingerGestureNoSupportedRawContactFormat" xml:space="preserve"><value>Three-finger gesture: no supported raw contact format</value></data>
+  <data name="NativeThreeFingerGestureWaitingForCompatibleContactReports" xml:space="preserve"><value>Three-finger gesture: waiting for compatible contact reports</value></data>
+  <data name="NativeCtrlAltEscToReset" xml:space="preserve"><value>Ctrl+Alt+Esc to reset</value></data>
+  <data name="NativeOpenGlideZoom" xml:space="preserve"><value>Open GlideZoom</value></data>
+  <data name="NativeToggleZoomOnCurrentMonitorCtrlAltZ" xml:space="preserve"><value>Toggle zoom on current monitor\tCtrl+Alt+Z</value></data>
+  <data name="NativeAllMonitorZoomCtrlAltShiftZ" xml:space="preserve"><value>All-monitor zoom\tCtrl+Alt+Shift+Z</value></data>
+  <data name="NativeIndependentMonitorZoomCtrlAltI" xml:space="preserve"><value>Independent-monitor zoom\tCtrl+Alt+I</value></data>
+  <data name="NativeResetAllZoomTo1xCtrlAltEsc" xml:space="preserve"><value>Reset all zoom to 1x\tCtrl+Alt+Esc</value></data>
+  <data name="NativeCopyZoomedViewCtrlAltS" xml:space="preserve"><value>Copy zoomed view\tCtrl+Alt+S</value></data>
+  <data name="NativePauseInputControls" xml:space="preserve"><value>Pause input controls</value></data>
+  <data name="NativeExitGlideZoom" xml:space="preserve"><value>Exit GlideZoom</value></data>
+  <data name="NativeSupportedArgumentsQuietResetQuitPowertoysRunnerPID" xml:space="preserve"><value>Supported arguments: --quiet, --reset, --quit, --powertoys &lt;runner PID&gt;.</value></data>
+  <data name="NativeGlideZoomIsAlreadyRunningExitThatInstanceBeforeEnabling" xml:space="preserve"><value>GlideZoom is already running. Exit that instance before enabling GlideZoom in PowerToys.</value></data>
+  <data name="NativeGlideZoomNeedsWindowsUIAccessSoClicksMatchTheMagnified" xml:space="preserve"><value>GlideZoom needs Windows UIAccess so clicks match the magnified desktop.\n\nUse a signed PowerToys build installed in a trusted Windows location such as Program Files.\n\nRunning the unsigned file as administrator does not replace installation.</value></data>
+  <data name="NativeGlideZoomInstallationRequired" xml:space="preserve"><value>GlideZoom - installation required</value></data>
+  <data name="NativeGlideZoomStoppedAfterAnUnexpectedErrorItsRecoveryProcess" xml:space="preserve"><value>GlideZoom stopped after an unexpected error. Its recovery process will attempt to restore only a recognized GlideZoom transform. Restart from its installed folder in Explorer.</value></data>
+  <data name="NativeStatusFormat" xml:space="preserve"><value>{0}  |  {1}x  |  {2}{3}</value><comment>Numbered placeholders must all be preserved. They may be reordered. Do not translate keyboard shortcuts, command-line switches, PowerToys or GlideZoom.</comment></data>
+  <data name="NativeTrayStatusFormat" xml:space="preserve"><value>GlideZoom - {0}</value><comment>Numbered placeholders must all be preserved. They may be reordered. Do not translate keyboard shortcuts, command-line switches, PowerToys or GlideZoom.</comment></data>
+  <data name="NativeGraphicsResultFormat" xml:space="preserve"><value>\nGraphics result: 0x{0}</value><comment>Numbered placeholders must all be preserved. They may be reordered. Do not translate keyboard shortcuts, command-line switches, PowerToys or GlideZoom.</comment></data>
+  <data name="NativeWindowFitPending" xml:space="preserve"><value>Fitting the active window...</value></data>
+  <data name="NativeWindowFitFitted" xml:space="preserve"><value>Active window fitted to the magnified viewport.</value></data>
+  <data name="NativeWindowFitBusy" xml:space="preserve"><value>A window fit is already pending.</value></data>
+  <data name="NativeWindowFitInvalidViewport" xml:space="preserve"><value>Zoom in on a monitor before fitting a window.</value></data>
+  <data name="NativeWindowFitUnavailableDesktop" xml:space="preserve"><value>Window fit is unavailable on this desktop.</value></data>
+  <data name="NativeWindowFitNoWindow" xml:space="preserve"><value>No active application window to fit.</value></data>
+  <data name="NativeWindowFitOwnWindow" xml:space="preserve"><value>GlideZoom windows cannot be fitted.</value></data>
+  <data name="NativeWindowFitNotResizable" xml:space="preserve"><value>The active window cannot be moved and resized.</value></data>
+  <data name="NativeWindowFitFullscreen" xml:space="preserve"><value>Leave fullscreen in the application before fitting its window.</value></data>
+  <data name="NativeWindowFitMaximized" xml:space="preserve"><value>Restore the maximized window before fitting it.</value></data>
+  <data name="NativeWindowFitHung" xml:space="preserve"><value>The active application is not responding.</value></data>
+  <data name="NativeWindowFitUnavailableGeometry" xml:space="preserve"><value>The window's physical frame could not be read safely.</value></data>
+  <data name="NativeWindowFitContextChanged" xml:space="preserve"><value>The active window changed; window fit stopped.</value></data>
+  <data name="NativeWindowFitNativeFailure" xml:space="preserve"><value>Windows refused the window fit.</value></data>
+  <data name="NativeWindowFitAppConstrained" xml:space="preserve"><value>The application adjusted the requested size or position.</value></data>
+  <data name="NativeWindowFitTimedOut" xml:space="preserve"><value>The application did not confirm the requested window fit.</value></data>
+  <data name="NativeWindowFitUnavailable" xml:space="preserve"><value>Window fit is unavailable.</value></data>
+</root>

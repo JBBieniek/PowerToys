@@ -263,6 +263,9 @@
             "PowerToys.ZoomItModuleInterface.dll",
             "PowerToys.ZoomItSettingsInterop.dll",
 
+            "PowerToys.GlideZoom.exe",
+            "PowerToys.GlideZoomModuleInterface.dll",
+
             "PowerToys.GrabAndMove.exe",
             "PowerToys.GrabAndMoveModuleInterface.dll",
 

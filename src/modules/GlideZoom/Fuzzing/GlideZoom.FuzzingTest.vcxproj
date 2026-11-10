@@ -87,6 +87,7 @@
     <ClCompile Include="PowerToysSettingsFuzzer.cpp" />
     <ClCompile Include="RoutingFuzzer.cpp" />
     <ClCompile Include="PointerSpeedFuzzer.cpp" />
+    <ClCompile Include="DeploymentPolicyFuzzer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="OneFuzzConfig.json" />

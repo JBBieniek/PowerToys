@@ -6958,6 +6958,13 @@ Text uses the current drawing color.</value>
     <value>Enable GlideZoom</value>
     <comment>{Locked="GlideZoom"}</comment>
   </data>
+  <data name="GlideZoom_MachineInstallRequired.Title" xml:space="preserve">
+    <value>An all-users installation is required</value>
+  </data>
+  <data name="GlideZoom_MachineInstallRequired.Message" xml:space="preserve">
+    <value>Install PowerToys for all users in Program Files to use GlideZoom. Per-user and portable installations are not supported.</value>
+    <comment>{Locked="PowerToys"} {Locked="GlideZoom"}</comment>
+  </data>
   <data name="GlideZoom_ToggleMonitor" xml:space="preserve">
     <value>Toggle monitor zoom</value>
   </data>
@@ -6972,15 +6979,15 @@ Text uses the current drawing color.</value>
   </data>
   <data name="GlideZoom_ShortcutHelp.Text" xml:space="preserve">
     <value>Left Win + Left Alt + = / −: zoom in / out (also + or numpad; tap or hold)
-Ctrl + Alt + = / −: backup zoom controls (also + or numpad)
-Ctrl + Alt + Space: hold and move the mouse vertically to zoom
-Ctrl + Alt + Z: toggle zoom on the current monitor using its configured mode
-Ctrl + Alt + Shift + Z: switch to linked monitors and toggle zoom
-Ctrl + Alt + I: switch to independent monitors and toggle zoom
+Ctrl + Left Alt + = / −: backup zoom controls (also + or numpad)
+Ctrl + Left Alt + Space: hold and move the mouse vertically to zoom
+Ctrl + Left Alt + Z: toggle zoom on the current monitor using its configured mode
+Ctrl + Left Alt + Shift + Z: switch to linked monitors and toggle zoom
+Ctrl + Left Alt + I: switch to independent monitors and toggle zoom
 Ctrl + Alt + Esc: reset all zoom
-Ctrl + Alt + S: copy the zoomed view
-Ctrl + Alt + V: show the view indicator
-Ctrl + Alt + Shift + F: fit the active resizable window to the current viewport</value>
+Ctrl + Left Alt + S: copy the zoomed view
+Ctrl + Left Alt + V: show the view indicator
+Ctrl + Left Alt + Shift + F: fit the active resizable window to the current viewport. Right Alt (AltGr) remains available for typing.</value>
   </data>
   <data name="GlideZoom_WheelModifier.Header" xml:space="preserve">
     <value>Mouse wheel modifier</value>
@@ -7007,10 +7014,10 @@ Ctrl + Alt + Shift + F: fit the active resizable window to the current viewport<
     <value>Double-tap Left Ctrl, holding the second press, then move the mouse vertically.</value>
   </data>
   <data name="GlideZoom_ModifiedDoubleClick.Header" xml:space="preserve">
-    <value>Ctrl + Alt + double-click to zoom</value>
+    <value>Ctrl + Left Alt + double-click to zoom</value>
   </data>
   <data name="GlideZoom_ModifiedDoubleClick.Description" xml:space="preserve">
-    <value>Hold Ctrl + Alt, double-click the left mouse button and hold, then move vertically. Matching clicks are reserved for GlideZoom.</value>
+    <value>Hold Ctrl + Left Alt, double-click the left mouse button and hold, then move vertically. Matching clicks are reserved for GlideZoom.</value>
     <comment>{Locked="GlideZoom"}</comment>
   </data>
   <data name="GlideZoom_ThreeFingerTouchpad.Header" xml:space="preserve">

@@ -14,9 +14,17 @@
         ModuleImageSource="ms-appx:///Assets/Settings/Modules/GlideZoom.png">
         <controls:SettingsPageControl.ModuleContent>
             <StackPanel ChildrenTransitions="{StaticResource SettingsCardsAnimations}" Orientation="Vertical">
-                <tkcontrols:SettingsCard Name="GlideZoom_Enable" x:Uid="GlideZoom_Enable" HeaderIcon="{ui:BitmapIcon Source=/Assets/Settings/Icons/GlideZoom.png}">
-                    <ToggleSwitch x:Uid="ToggleSwitch" IsOn="{x:Bind ViewModel.IsEnabled, Mode=TwoWay}" />
-                </tkcontrols:SettingsCard>
+                <InfoBar
+                    x:Uid="GlideZoom_MachineInstallRequired"
+                    Margin="0,0,0,8"
+                    IsClosable="False"
+                    IsOpen="{x:Bind ViewModel.IsUnavailable, Mode=OneWay}"
+                    Severity="Informational" />
+                <controls:GPOInfoControl IsEnabled="{x:Bind ViewModel.CanToggleEnabled, Mode=OneWay}" ShowWarning="{x:Bind ViewModel.IsEnabledGpoConfigured, Mode=OneWay}">
+                    <tkcontrols:SettingsCard Name="GlideZoom_Enable" x:Uid="GlideZoom_Enable" HeaderIcon="{ui:BitmapIcon Source=/Assets/Settings/Icons/GlideZoom.png}">
+                        <ToggleSwitch x:Uid="ToggleSwitch" IsOn="{x:Bind ViewModel.IsEnabled, Mode=TwoWay}" />
+                    </tkcontrols:SettingsCard>
+                </controls:GPOInfoControl>
                 <controls:SettingsGroup x:Uid="GlideZoom_Controls" IsEnabled="{x:Bind ViewModel.IsEnabled, Mode=OneWay}">
                     <tkcontrols:SettingsCard Name="GlideZoom_Shortcuts" x:Uid="GlideZoom_Shortcuts" ContentAlignment="Vertical">
                         <TextBlock

@@ -53,11 +53,13 @@
 #include "ui_text_cache.h"
 #include "zoom_capture_win32.h"
 #include "window_fit.h"
+#include "Resources.h"
 #include <common/logger/logger.h>
 #include <common/utils/logger_helper.h>
 
 namespace
 {
+    using glide::ui::Text;
     constexpr wchar_t kClass[] = L"GlideZoom.AccessibilityZoom.1";
     constexpr UINT kTray = WM_APP + 1, kError = WM_APP + 2;
     constexpr UINT kReset = WM_APP + 3, kQuit = WM_APP + 4;
@@ -134,7 +136,7 @@ namespace
         std::wstring result;
         try
         {
-            result = message ? message : L"Unknown Windows error";
+            result = message ? message : Text(IDS_NATIVEUNKNOWNWINDOWSERROR);
         }
         catch (...)
         {
@@ -172,7 +174,7 @@ namespace
         {
             instance_ = instance;
             if (runnerPid_ && !runner_.Connect(runnerPid_))
-                return Fail(L"The PowerToys runner or its control events are unavailable.");
+                return Fail(Text(IDS_NATIVETHEPOWERTOYSRUNNERORITSCONTROLEVENTSAREUNAVAILABLE));
             const auto loaded = settingsStore_.Load(settings_);
             WNDCLASSEXW wc{};
             wc.cbSize = sizeof(wc);
@@ -186,66 +188,61 @@ namespace
             wc.hIconSm = wc.hIcon;
             wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
             if (!RegisterClassExW(&wc))
-                return Fail(L"Could not register the application window.");
-            hwnd_ = CreateWindowExW(0, kClass, runnerPid_ ? L"PowerToys GlideZoom" : L"GlideZoom 0.6.2 - Accessibility Zoom", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, CW_USEDEFAULT, CW_USEDEFAULT, 720, 700, nullptr, nullptr, instance, nullptr);
+                return Fail(Text(IDS_NATIVECOULDNOTREGISTERTHEAPPLICATIONWINDOW));
+            hwnd_ = CreateWindowExW(0, kClass, runnerPid_ ? Text(IDS_NATIVEPOWERTOYSGLIDEZOOM) : Text(IDS_NATIVEGLIDEZOOM062ACCESSIBILITYZOOM), WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, CW_USEDEFAULT, CW_USEDEFAULT, 720, 700, nullptr, nullptr, instance, nullptr);
             if (!hwnd_)
-                return Fail(L"Could not create the application window.");
+                return Fail(Text(IDS_NATIVECOULDNOTCREATETHEAPPLICATIONWINDOW));
             CreateControls();
             taskbarCreated_ = RegisterWindowMessageW(L"TaskbarCreated");
             if (!mag_.Load() || !mag_.Initialize())
-                return Fail(L"Windows could not initialize screen magnification.");
+                return Fail(Text(IDS_NATIVEWINDOWSCOULDNOTINITIALIZESCREENMAGNIFICATION));
             magInitialized_ = true;
             if (!monitor_->Initialize(instance_, mag_))
-                return Fail(L"GPU monitor zoom could not initialize. Windows 10 version 2004 or newer and Windows Graphics Capture are required.");
+                return Fail(Text(IDS_NATIVEGPUMONITORZOOMCOULDNOTINITIALIZEWINDOWS10VERSION));
             glide::session::Snapshot baseline{};
             if (!mag_.Read(baseline))
-                return Fail(L"Windows could not read the desktop magnification state.");
+                return Fail(Text(IDS_NATIVEWINDOWSCOULDNOTREADTHEDESKTOPMAGNIFICATIONSTATE));
             if (!glide::session::Valid(baseline) || !glide::session::IsIdentity(baseline))
             {
-                ReportError(hwnd_, L"Another magnifier is active. Close it before starting GlideZoom. "
-                                   L"GlideZoom has left its transforms unchanged.",
-                            L"GlideZoom",
+                ReportError(hwnd_, Text(IDS_NATIVEANOTHERMAGNIFIERISACTIVECLOSEITBEFORESTARTINGGLIDEZOOM),
+                            Text(IDS_NATIVEGLIDEZOOM),
                             MB_OK | MB_ICONINFORMATION,
                             runnerPid_ != 0);
                 return 1;
             }
             // Merely starting the app never writes a global magnification transform.
             if (!RefreshDesktop())
-                return Fail(L"Windows did not provide usable display geometry.");
+                return Fail(Text(IDS_NATIVEWINDOWSDIDNOTPROVIDEUSABLEDISPLAYGEOMETRY));
             if (!guardian_.Start())
-                return Fail(L"The recovery process could not start.");
+                return Fail(Text(IDS_NATIVETHERECOVERYPROCESSCOULDNOTSTART));
             guardianStarted_ = true;
             if (!input_.Start(instance_))
-                return Fail(L"Could not start the dedicated input thread.");
+                return Fail(Text(IDS_NATIVECOULDNOTSTARTTHEDEDICATEDINPUTTHREAD));
             input_.SetRoutingWake(hwnd_, kRoutingWake);
             input_.SetShortcutWake(hwnd_, kShortcutCommand);
             parkedViews_.reserve(displays_.size());
             monitor_->SetCursorPositionResolver(ResolveCursorPosition, this);
             notificationsRegistered_ = WTSRegisterSessionNotification(hwnd_, NOTIFY_FOR_THIS_SESSION) != FALSE;
             if (!notificationsRegistered_)
-                return Fail(L"Could not subscribe to session changes.");
+                return Fail(Text(IDS_NATIVECOULDNOTSUBSCRIBETOSESSIONCHANGES));
             if (!AddTray())
-                return Fail(L"Could not create tray controls.");
+                return Fail(Text(IDS_NATIVECOULDNOTCREATETRAYCONTROLS));
             if (!frameClock_.Start())
-                return Fail(L"Could not start the animation clock.");
+                return Fail(Text(IDS_NATIVECOULDNOTSTARTTHEANIMATIONCLOCK));
             // A native menu/dialog has its own message loop. This fallback services
             // the same deadline policy there and keeps recovery heartbeats alive.
             if (!SetTimer(hwnd_, kTimer, 10, nullptr))
-                return Fail(L"Could not start the modal-loop timer.");
+                return Fail(Text(IDS_NATIVECOULDNOTSTARTTHEMODALLOOPTIMER));
             lastTick_ = GetTickCount64();
             EnableControls();
             if (loaded == glide::settings::LoadResult::Invalid)
                 QueueError(runnerPid_ ?
-                               L"GlideZoom settings were invalid. Safe defaults are in use. "
-                               L"Update the options in PowerToys Settings to save a valid configuration." :
-                               L"The settings file was incomplete or invalid. Safe defaults are in use. "
-                               L"The original file has been left unchanged; Save settings replaces it with a complete configuration.");
+                               Text(IDS_NATIVEGLIDEZOOMSETTINGSWEREINVALIDSAFEDEFAULTSAREINUSE) :
+                               Text(IDS_NATIVETHESETTINGSFILEWASINCOMPLETEORINVALIDSAFEDEFAULTS));
             else if (loaded == glide::settings::LoadResult::Unavailable)
                 QueueError(runnerPid_ ?
-                               L"GlideZoom settings could not be read. Safe defaults are in use. "
-                               L"Review the GlideZoom options in PowerToys Settings and check access to your PowerToys settings folder." :
-                               L"Settings could not be read safely. Safe defaults are in use. "
-                               L"Saving is disabled for this run; check the profile folder and restart.");
+                               Text(IDS_NATIVEGLIDEZOOMSETTINGSCOULDNOTBEREADSAFEDEFAULTSARE) :
+                               Text(IDS_NATIVESETTINGSCOULDNOTBEREADSAFELYSAFEDEFAULTSARE));
             if (!quiet)
                 Show();
             bool loopOkay = true, quit = false;
@@ -298,7 +295,7 @@ namespace
             }
             Cleanup();
             if (!loopOkay)
-                return Fail(L"The Windows animation/message loop stopped unexpectedly.");
+                return Fail(Text(IDS_NATIVETHEWINDOWSANIMATIONMESSAGELOOPSTOPPEDUNEXPECTEDLY));
             return failed_ ? 1 : quitCode_;
         }
 
@@ -418,7 +415,7 @@ namespace
         int Fail(const wchar_t* text)
         {
             const DWORD error = GetLastError();
-            ReportError(hwnd_, (std::wstring(text) + L"\n\n" + ErrorText(error)).c_str(), L"GlideZoom", MB_OK | MB_ICONERROR, runnerPid_ != 0);
+            ReportError(hwnd_, (std::wstring(text) + L"\n\n" + ErrorText(error)).c_str(), Text(IDS_NATIVEGLIDEZOOM), MB_OK | MB_ICONERROR, runnerPid_ != 0);
             return 1;
         }
 
@@ -507,7 +504,7 @@ namespace
             CancelInput();
             if (!guardian_.Alive() || input_.Faulted())
             {
-                QueueError(L"Input or recovery is unavailable. Restart GlideZoom before using zoom.");
+                QueueError(Text(IDS_NATIVEINPUTORRECOVERYISUNAVAILABLERESTARTGLIDEZOOMBEFOREUSING));
                 return false;
             }
             if (!input_.Healthy())
@@ -526,14 +523,13 @@ namespace
                 return false;
             if (!RefreshDesktop())
             {
-                QueueError(L"Display geometry is unavailable. GlideZoom remains paused.");
+                QueueError(Text(IDS_NATIVEDISPLAYGEOMETRYISUNAVAILABLEGLIDEZOOMREMAINSPAUSED));
                 return false;
             }
             glide::session::Snapshot current{};
             if (!mag_.Read(current) || !glide::session::Valid(current) || !glide::session::IsIdentity(current))
             {
-                QueueError(L"Another magnifier is active, or its state could not be verified. "
-                           L"GlideZoom remains paused. Close the other magnifier, then resume from the tray.");
+                QueueError(Text(IDS_NATIVEANOTHERMAGNIFIERISACTIVEORITSSTATECOULDNOT));
                 return false;
             }
             if (!ApplyPreferredScope())
@@ -547,8 +543,7 @@ namespace
                 hotkeys_[kResetHotkey] = RegisterShortcut(kResetHotkey, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_ESCAPE, L"Ctrl+Alt+Esc");
                 if (!hotkeys_[kResetHotkey])
                 {
-                    QueueError(L"Ctrl+Alt+Esc is already in use. GlideZoom remains paused because "
-                               L"its emergency reset shortcut could not be reserved.");
+                    QueueError(Text(IDS_NATIVECTRLALTESCISALREADYINUSEGLIDEZOOMREMAINS));
                     return false;
                 }
                 Diagnostic(L"Ctrl+Left Alt commands use the keyboard hook; Right Alt/AltGr remains available for typing.");
@@ -1592,13 +1587,10 @@ namespace
             // Capture the reason before deferred/native recovery can reset it.
             std::wstring message;
             if (result == glide::session::Result::Conflict)
-                message = L"Another application changed desktop magnification. GlideZoom released control "
-                          L"and paused without resetting that application's state.";
+                message = Text(IDS_NATIVEANOTHERAPPLICATIONCHANGEDDESKTOPMAGNIFICATIONGLIDEZOOMRELEASEDCONTROLAND);
             else
             {
-                message = L"GlideZoom could not present or verify zoom and paused its controls. "
-                          L"Recovery of its recognized display/input state has been requested. "
-                          L"Check the display, then resume from the tray.";
+                message = Text(IDS_NATIVEGLIDEZOOMCOULDNOTPRESENTORVERIFYZOOMANDPAUSED);
                 if (detail && *detail)
                     message += L"\n\n" + std::wstring(detail);
             }
@@ -1707,7 +1699,7 @@ namespace
                 if (IndependentMode())
                 {
                     if (!ReleaseIndependentZoom())
-                        SessionFailure(glide::session::Result::WriteFailure, L"The current monitor could not release its zoom safely.");
+                        SessionFailure(glide::session::Result::WriteFailure, Text(IDS_NATIVETHECURRENTMONITORCOULDNOTRELEASEITSZOOMSAFELY));
                     return lifecycle_.Ready();
                 }
                 return drag_.active ? RestoreOwned() : Reset();
@@ -1750,8 +1742,9 @@ namespace
                     if (presented.localFailure)
                     {
                         wchar_t code[48]{};
-                        swprintf_s(code, L"\nGraphics result: 0x%08lX", static_cast<unsigned long>(monitor_->LastResult()));
-                        detail = std::wstring(monitor_->FailureReason()) + code;
+                        swprintf_s(code, L"%08lX", static_cast<unsigned long>(monitor_->LastResult()));
+                        Diagnostic(monitor_->FailureReason(), true);
+                        detail = glide::ui::FormatResource(Text(IDS_NATIVEGRAPHICSRESULTFORMAT), glide::ui::EnglishText(IDS_NATIVEGRAPHICSRESULTFORMAT), std::array<std::wstring_view, 1>{ code });
                     }
                     SessionFailure(presented.result, detail.c_str());
                     return false;
@@ -2090,28 +2083,25 @@ namespace
                 UpdateStatus();
                 return;
             }
-            const wchar_t* message = L"The zoomed view could not be copied. No new image was placed on the clipboard.";
+            const wchar_t* message = Text(IDS_NATIVETHEZOOMEDVIEWCOULDNOTBECOPIEDNONEW);
             switch (result)
             {
             case Result::NotReady:
-                message = L"Resume GlideZoom before copying the view. No screenshot was taken.";
+                message = Text(IDS_NATIVERESUMEGLIDEZOOMBEFORECOPYINGTHEVIEWNOSCREENSHOTWAS);
                 break;
             case Result::PrepareFailed:
-                message = L"The screenshot could not be prepared. The display state may have changed, the layout may exceed "
-                          L"the capture size limit, or Windows may not have enough memory. No image was published.";
+                message = Text(IDS_NATIVETHESCREENSHOTCOULDNOTBEPREPAREDTHEDISPLAYSTATE);
                 break;
             case Result::IdentityFailed:
             case Result::EnvironmentChanged:
             case Result::RestoreFailed:
-                message = L"The desktop, display layout or magnification changed while copying. The screenshot was abandoned. "
-                          L"GlideZoom restores only state it can still verify as its own. Check the current view before resuming.";
+                message = Text(IDS_NATIVETHEDESKTOPDISPLAYLAYOUTORMAGNIFICATIONCHANGEDWHILECOPYING);
                 break;
             case Result::ClipboardBusy:
-                message = L"Another application is using the clipboard. The existing clipboard was left unchanged. Try Copy zoomed view again.";
+                message = Text(IDS_NATIVEANOTHERAPPLICATIONISUSINGTHECLIPBOARDTHEEXISTINGCLIPBOARD);
                 break;
             case Result::ClipboardSetFailed:
-                message = L"Windows cleared the clipboard but could not accept the prepared image. The prior clipboard contents "
-                          L"could not be preserved at this final step. Zoom was restored.";
+                message = Text(IDS_NATIVEWINDOWSCLEAREDTHECLIPBOARDBUTCOULDNOTACCEPTTHE);
                 break;
             default:
                 break;
@@ -2480,7 +2470,7 @@ namespace
             if (!ServiceIndependentViews())
             {
                 if (lifecycle_.Ready())
-                    SessionFailure(glide::session::Result::WriteFailure, L"A monitor view or its input handoff could not be verified.");
+                    SessionFailure(glide::session::Result::WriteFailure, Text(IDS_NATIVEAMONITORVIEWORITSINPUTHANDOFFCOULDNOT));
                 return;
             }
             if (routingBusy_ || !lifecycle_.Ready())
@@ -2581,14 +2571,14 @@ namespace
         {
             if (result.reason == glide::window_fit::Reason::Pending || result.reason == glide::window_fit::Reason::Idle)
                 return;
-            const auto* text = glide::window_fit::ReasonText(result.reason);
-            Diagnostic(text, result.reason != glide::window_fit::Reason::Fitted);
+            Diagnostic(glide::window_fit::ReasonText(result.reason), result.reason != glide::window_fit::Reason::Fitted);
+            const auto* text = Text(glide::ui::WindowFitResourceId(result.reason));
             if (cleaned_ || tray_.Stopping() || !tray_.Registered())
                 return;
             auto icon = TrayIcon();
             icon.uFlags = NIF_INFO;
             icon.dwInfoFlags = NIIF_INFO | NIIF_RESPECT_QUIET_TIME;
-            wcscpy_s(icon.szInfoTitle, L"GlideZoom - fit window");
+            wcsncpy_s(icon.szInfoTitle, Text(IDS_NATIVEGLIDEZOOMFITWINDOW), _TRUNCATE);
             wcsncpy_s(icon.szInfo, text, _TRUNCATE);
             Shell_NotifyIconW(NIM_MODIFY, &icon);
         }
@@ -2655,29 +2645,24 @@ namespace
             auto create = [&](const wchar_t* type, const wchar_t* text, DWORD style, int id, int x, int y, int w, int h) {
                 return Control(type, text, style, id, px(x), px(y), px(w), px(h));
             };
-            HWND title = create(L"STATIC", L"GlideZoom", 0, 0, 28, 16, 580, 43);
+            HWND title = create(L"STATIC", Text(IDS_NATIVEGLIDEZOOM), 0, 0, 28, 16, 580, 43);
             SendMessageW(title, WM_SETFONT, reinterpret_cast<WPARAM>(titleFont_), TRUE);
-            create(L"STATIC", L"Keep each monitor's zoom, use one view, or link all monitors.", 0, 0, 30, 65, 600, 30);
-            status_ = create(L"STATIC", L"Starting  |  1.00x", 0, 0, 30, 102, 600, 25);
+            create(L"STATIC", Text(IDS_NATIVEKEEPEACHMONITORSZOOMUSEONEVIEWOR), 0, 0, 30, 65, 600, 30);
+            status_ = create(L"STATIC", Text(IDS_NATIVESTARTING100X), 0, 0, 30, 102, 600, 25);
             create(L"STATIC",
-                   L"Left Win + Left Alt + = / -       Tap or hold (also + and numpad)\n"
-                   L"Chosen modifier + wheel          Uses zoom multiplier below\n"
-                   L"Ctrl + Left Alt + Space (hold)         Move up / down to zoom\n"
-                   L"Ctrl + Left Alt + Z / + Shift + Z      Current monitor / all together\n"
-                   L"Ctrl + Left Alt + I / V                 Independent monitors / view indicator\n"
-                   L"Ctrl + Left Alt + Esc / S              Reset all / copy view (brief 1x flash)",
+                   Text(IDS_NATIVELEFTWINLEFTALTTAPORHOLDALSOAND),
                    0,
                    0,
                    30,
                    132,
                    610,
                    106);
-            create(L"STATIC", L"Wheel modifier", 0, 0, 30, 244, 170, 23);
+            create(L"STATIC", Text(IDS_NATIVEWHEELMODIFIER), 0, 0, 30, 244, 170, 23);
             modifier_ = create(L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_TABSTOP | WS_VSCROLL, kModifier, 230, 240, 370, 190);
-            for (const auto* label : { L"Left Ctrl + Left Alt (default)", L"Ctrl (macOS-style)", L"Left Alt", L"Windows key" })
+            for (const auto* label : { Text(IDS_NATIVELEFTCTRLLEFTALTDEFAULT), Text(IDS_NATIVECTRLMACOSSTYLE), Text(IDS_NATIVELEFTALT), Text(IDS_NATIVEWINDOWSKEY) })
                 SendMessageW(modifier_, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(label));
             SendMessageW(modifier_, CB_SETCURSEL, settings_.modifier, 0);
-            create(L"STATIC", L"Maximum zoom", 0, 0, 30, 286, 170, 23);
+            create(L"STATIC", Text(IDS_NATIVEMAXIMUMZOOM), 0, 0, 30, 286, 170, 23);
             maximum_ = create(L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_TABSTOP, kMaximum, 230, 282, 170, 160);
             int selected = 0, i = 0;
             for (int value : { 2, 4, 8, 16 })
@@ -2689,62 +2674,60 @@ namespace
                 ++i;
             }
             SendMessageW(maximum_, CB_SETCURSEL, selected, 0);
-            create(L"STATIC", L"Gesture sensitivity", 0, 0, 30, 328, 170, 23);
+            create(L"STATIC", Text(IDS_NATIVEGESTURESENSITIVITY), 0, 0, 30, 328, 170, 23);
             sensitivity_ = create(L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_TABSTOP, kSensitivity, 230, 324, 170, 160);
-            for (const auto* label : { L"Gentle", L"Balanced", L"Fast" })
+            for (const auto* label : { Text(IDS_NATIVEGENTLE), Text(IDS_NATIVEBALANCED), Text(IDS_NATIVEFAST) })
                 SendMessageW(sensitivity_, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(label));
             SendMessageW(sensitivity_, CB_SETCURSEL, settings_.sensitivity, 0);
-            create(L"STATIC", L"Default zoom target", 0, 0, 410, 286, 200, 23);
+            create(L"STATIC", Text(IDS_NATIVEDEFAULTZOOMTARGET), 0, 0, 410, 286, 200, 23);
             zoomScope_ = create(L"COMBOBOX", L"", CBS_DROPDOWNLIST | WS_TABSTOP, kZoomScope, 410, 324, 200, 160);
-            for (const auto* label : { L"Selected monitor (one view)", L"All monitors together", L"Independent monitors" })
+            for (const auto* label : { Text(IDS_NATIVESELECTEDMONITORONEVIEW), Text(IDS_NATIVEALLMONITORSTOGETHER), Text(IDS_NATIVEINDEPENDENTMONITORS) })
                 SendMessageW(zoomScope_, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(label));
             SendMessageW(zoomScope_, CB_SETCURSEL, settings_.zoomScope, 0);
-            create(L"STATIC", L"Key / wheel multiplier", 0, 0, 30, 370, 165, 23);
+            create(L"STATIC", Text(IDS_NATIVEKEYWHEELMULTIPLIER), 0, 0, 30, 370, 165, 23);
             const auto multiplierText = std::to_wstring(settings_.zoomMultiplier);
             zoomMultiplier_ = create(L"EDIT", multiplierText.c_str(), WS_BORDER | ES_NUMBER | ES_AUTOHSCROLL | WS_TABSTOP, kZoomMultiplier, 198, 366, 54, 27);
             // Keep one overflow character visible: otherwise pasting 1000 could
             // silently become the valid 100 before whole-field validation.
             SendMessageW(zoomMultiplier_, EM_LIMITTEXT, 4, 0);
             create(L"STATIC", L"1-100", 0, 0, 260, 370, 60, 23);
-            create(L"STATIC", L"Edge pan multiplier", 0, 0, 335, 370, 160, 23);
+            create(L"STATIC", Text(IDS_NATIVEEDGEPANMULTIPLIER), 0, 0, 335, 370, 160, 23);
             const auto edgeText = std::to_wstring(settings_.edgePanMultiplier);
             edgePanMultiplier_ = create(L"EDIT", edgeText.c_str(), WS_BORDER | ES_NUMBER | ES_AUTOHSCROLL | WS_TABSTOP, kEdgePanMultiplier, 500, 366, 54, 27);
             // The parser rejects the third digit instead of accepting a truncated
             // valid prefix (for example, 100 must not silently become 10).
             SendMessageW(edgePanMultiplier_, EM_LIMITTEXT, 3, 0);
             create(L"STATIC", L"1-10", 0, 0, 562, 370, 60, 23);
-            create(L"STATIC", L"Zoom step: 0.01x times multiplier. Edge pan: 1 = original, 3 = faster.", 0, 0, 30, 394, 600, 17);
-            keyboardGesture_ = create(L"BUTTON", L"Double-tap Left Ctrl and hold (optional)", BS_AUTOCHECKBOX | WS_TABSTOP, kKeyboardGesture, 30, 412, 590, 26);
-            mouseGesture_ = create(L"BUTTON", L"Ctrl+Left Alt + left double-click and hold (reserves matching clicks)", BS_AUTOCHECKBOX | WS_TABSTOP, kMouseGesture, 30, 440, 590, 26);
-            touchpadGesture_ = create(L"BUTTON", L"Three-finger touchpad double-tap and hold (optional)", BS_AUTOCHECKBOX | WS_TABSTOP, kTouchpadGesture, 30, 468, 590, 26);
-            reverse_ = create(L"BUTTON", L"Reverse wheel and drag direction", BS_AUTOCHECKBOX | WS_TABSTOP, kReverse, 30, 496, 590, 26);
-            following_ = create(L"BUTTON", L"Keep pointer centered (disables edge pan multiplier)", BS_AUTOCHECKBOX | WS_TABSTOP, kFollowing, 30, 524, 590, 26);
-            pointerScaling_ = create(L"BUTTON", L"Adjust pointer speed with zoom (required for edge pan multiplier)", BS_AUTOCHECKBOX | WS_TABSTOP, kPointerScaling, 30, 552, 600, 26);
-            create(L"STATIC", L"Pointer speed (%)", 0, 0, 30, 584, 160, 23);
+            create(L"STATIC", Text(IDS_NATIVEZOOMSTEP001XTIMESMULTIPLIEREDGEPAN1), 0, 0, 30, 394, 600, 17);
+            keyboardGesture_ = create(L"BUTTON", Text(IDS_NATIVEDOUBLETAPLEFTCTRLANDHOLDOPTIONAL), BS_AUTOCHECKBOX | WS_TABSTOP, kKeyboardGesture, 30, 412, 590, 26);
+            mouseGesture_ = create(L"BUTTON", Text(IDS_NATIVECTRLLEFTALTLEFTDOUBLECLICKANDHOLDRESERVES), BS_AUTOCHECKBOX | WS_TABSTOP, kMouseGesture, 30, 440, 590, 26);
+            touchpadGesture_ = create(L"BUTTON", Text(IDS_NATIVETHREEFINGERTOUCHPADDOUBLETAPANDHOLDOPTIONAL), BS_AUTOCHECKBOX | WS_TABSTOP, kTouchpadGesture, 30, 468, 590, 26);
+            reverse_ = create(L"BUTTON", Text(IDS_NATIVEREVERSEWHEELANDDRAGDIRECTION), BS_AUTOCHECKBOX | WS_TABSTOP, kReverse, 30, 496, 590, 26);
+            following_ = create(L"BUTTON", Text(IDS_NATIVEKEEPPOINTERCENTEREDDISABLESEDGEPANMULTIPLIER), BS_AUTOCHECKBOX | WS_TABSTOP, kFollowing, 30, 524, 590, 26);
+            pointerScaling_ = create(L"BUTTON", Text(IDS_NATIVEADJUSTPOINTERSPEEDWITHZOOMREQUIREDFOREDGEPAN), BS_AUTOCHECKBOX | WS_TABSTOP, kPointerScaling, 30, 552, 600, 26);
+            create(L"STATIC", Text(IDS_NATIVEPOINTERSPEED), 0, 0, 30, 584, 160, 23);
             pointerSpeed_ = create(L"EDIT", std::to_wstring(settings_.pointerSpeed).c_str(), WS_BORDER | ES_NUMBER | ES_AUTOHSCROLL | WS_TABSTOP, kPointerSpeed, 198, 580, 54, 27);
             SendMessageW(pointerSpeed_, EM_LIMITTEXT, 4, 0);
-            create(L"STATIC", L"25-300; 100 = normal. Applies only while zoomed.", 0, 0, 260, 584, 365, 23);
+            create(L"STATIC", Text(IDS_NATIVE25300100NORMALAPPLIESONLYWHILEZOOMED), 0, 0, 260, 584, 365, 23);
             SendMessageW(keyboardGesture_, BM_SETCHECK, settings_.keyboardGesture ? BST_CHECKED : BST_UNCHECKED, 0);
             SendMessageW(mouseGesture_, BM_SETCHECK, settings_.mouseGesture ? BST_CHECKED : BST_UNCHECKED, 0);
             SendMessageW(touchpadGesture_, BM_SETCHECK, settings_.touchpadGesture ? BST_CHECKED : BST_UNCHECKED, 0);
             SendMessageW(reverse_, BM_SETCHECK, settings_.reverse ? BST_CHECKED : BST_UNCHECKED, 0);
             SendMessageW(following_, BM_SETCHECK, settings_.centerFollow ? BST_CHECKED : BST_UNCHECKED, 0);
             SendMessageW(pointerScaling_, BM_SETCHECK, settings_.pointerScaling ? BST_CHECKED : BST_UNCHECKED, 0);
-            touchpadStatus_ = create(L"STATIC", L"Three-finger gesture: disabled", 0, 0, 30, 610, 600, 23);
-            create(L"STATIC", runnerPid_ ? L"Change these options in PowerToys Settings.\n"
-                                           L"Touchpad: set Windows three-finger Taps and Swipes to Nothing." :
-                                           L"Touchpad: tap, lift, tap-and-hold with three fingers; move up/down.\n"
-                                           L"0.01x steps. Set Windows three-finger Taps and Swipes to Nothing.",
+            touchpadStatus_ = create(L"STATIC", Text(IDS_NATIVETHREEFINGERGESTUREDISABLED), 0, 0, 30, 610, 600, 23);
+            create(L"STATIC", runnerPid_ ? Text(IDS_NATIVECHANGETHESEOPTIONSINPOWERTOYSSETTINGSTOUCHPADSETWINDOWS) :
+                                           Text(IDS_NATIVETOUCHPADTAPLIFTTAPANDHOLDWITHTHREEFINGERS),
                    0,
                    0,
                    30,
                    636,
                    610,
                    36);
-            create(L"BUTTON", runnerPid_ ? L"Open settings" : L"Save settings", BS_DEFPUSHBUTTON | WS_TABSTOP, runnerPid_ ? kOpenSettings : kSave, 30, 676, 125, 32);
-            create(L"BUTTON", L"Reset zoom", BS_PUSHBUTTON | WS_TABSTOP, kResetCommand, 165, 676, 110, 32);
-            create(L"BUTTON", L"Copy zoomed view", BS_PUSHBUTTON | WS_TABSTOP, kCaptureCommand, 285, 676, 155, 32);
-            create(L"BUTTON", L"Minimize to tray", BS_PUSHBUTTON | WS_TABSTOP, kHide, 450, 676, 150, 32);
+            create(L"BUTTON", runnerPid_ ? Text(IDS_NATIVEOPENSETTINGS) : Text(IDS_NATIVESAVESETTINGS), BS_DEFPUSHBUTTON | WS_TABSTOP, runnerPid_ ? kOpenSettings : kSave, 30, 676, 125, 32);
+            create(L"BUTTON", Text(IDS_NATIVERESETZOOM), BS_PUSHBUTTON | WS_TABSTOP, kResetCommand, 165, 676, 110, 32);
+            create(L"BUTTON", Text(IDS_NATIVECOPYZOOMEDVIEW), BS_PUSHBUTTON | WS_TABSTOP, kCaptureCommand, 285, 676, 155, 32);
+            create(L"BUTTON", Text(IDS_NATIVEMINIMIZETOTRAY), BS_PUSHBUTTON | WS_TABSTOP, kHide, 450, 676, 150, 32);
             if (runnerPid_)
             {
                 // PowerToys Settings owns edits. The engine displays its current
@@ -2778,8 +2761,7 @@ namespace
             if (characters <= 0 || !glide::settings::ParseZoomMultiplier(
                                        { multiplierText, static_cast<std::size_t>(characters) }, multiplier))
             {
-                QueueError(L"Enter a whole zoom multiplier from 1 to 100. For example, 1 changes zoom by "
-                           L"0.01x per key/wheel step; 10 changes it by 0.10x. Gesture sensitivity is separate.");
+                QueueError(Text(IDS_NATIVEENTERAWHOLEZOOMMULTIPLIERFROM1TO100));
                 SetFocus(zoomMultiplier_);
                 return;
             }
@@ -2789,9 +2771,7 @@ namespace
             if (edgeCharacters <= 0 || !glide::settings::ParseEdgePanMultiplier(
                                            { edgeText, static_cast<std::size_t>(edgeCharacters) }, edgeMultiplier))
             {
-                QueueError(L"Enter a whole edge pan multiplier from 1 to 10. 1 preserves the original speed; "
-                           L"3 moves the view faster at the five-pixel edge. Enable Adjust pointer speed with zoom "
-                           L"and leave Keep pointer centered unchecked.");
+                QueueError(Text(IDS_NATIVEENTERAWHOLEEDGEPANMULTIPLIERFROM1TO));
                 SetFocus(edgePanMultiplier_);
                 return;
             }
@@ -2801,8 +2781,7 @@ namespace
             if (pointerCharacters <= 0 || !glide::settings::ParsePointerSpeed(
                                               { pointerText, static_cast<std::size_t>(pointerCharacters) }, pointerSpeed))
             {
-                QueueError(L"Enter a whole pointer speed from 25 to 300 percent. 100 preserves normal speed; "
-                           L"automatic zoom adjustment can be enabled separately.");
+                QueueError(Text(IDS_NATIVEENTERAWHOLEPOINTERSPEEDFROM25TO300));
                 SetFocus(pointerSpeed_);
                 return;
             }
@@ -2833,14 +2812,12 @@ namespace
             }
             UpdateStatus();
             if (result == glide::settings::SaveResult::ChangedOutside)
-                MessageBoxW(hwnd_, L"The settings file changed outside GlideZoom. Your changes were not applied or saved. "
-                                   L"Restart GlideZoom to load that file before editing again.",
-                            L"GlideZoom",
+                MessageBoxW(hwnd_, Text(IDS_NATIVETHESETTINGSFILECHANGEDOUTSIDEGLIDEZOOMYOURCHANGESWERE),
+                            Text(IDS_NATIVEGLIDEZOOM),
                             MB_OK | MB_ICONWARNING);
             else if (result != glide::settings::SaveResult::Saved)
-                MessageBoxW(hwnd_, L"The complete settings update could not be saved. The previous active configuration "
-                                   L"is still in use. Check your profile folder and try again.",
-                            L"GlideZoom",
+                MessageBoxW(hwnd_, Text(IDS_NATIVETHECOMPLETESETTINGSUPDATECOULDNOTBESAVEDTHE),
+                            Text(IDS_NATIVEGLIDEZOOM),
                             MB_OK | MB_ICONWARNING);
         }
 
@@ -2852,7 +2829,7 @@ namespace
             const DWORD length = GetModuleFileNameW(nullptr, executable.data(), static_cast<DWORD>(executable.size()));
             if (!length || length >= executable.size())
             {
-                QueueError(L"PowerToys Settings could not be located. Open it from the PowerToys tray icon.");
+                QueueError(Text(IDS_NATIVEPOWERTOYSSETTINGSCOULDNOTBELOCATEDOPENITFROM));
                 return;
             }
             executable.resize(length);
@@ -2867,7 +2844,7 @@ namespace
             NativeOperation launch{ nativeOperation_ };
             if (!ShellExecuteExW(&info))
             {
-                QueueError(L"PowerToys Settings could not be opened. Open it from the PowerToys tray icon.");
+                QueueError(Text(IDS_NATIVEPOWERTOYSSETTINGSCOULDNOTBEOPENEDOPENITFROM));
             }
         }
 
@@ -3003,7 +2980,7 @@ namespace
             }
             else
             {
-                QueueError(L"PowerToys settings could not be read as a complete valid configuration. The previous configuration remains active.");
+                QueueError(Text(IDS_NATIVEPOWERTOYSSETTINGSCOULDNOTBEREADASACOMPLETE));
             }
             UpdateStatus();
             return true;
@@ -3046,7 +3023,7 @@ namespace
             icon.hIcon = LoadIconW(instance_, MAKEINTRESOURCEW(1));
             if (!icon.hIcon)
                 icon.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
-            wcscpy_s(icon.szTip, L"GlideZoom - left-click to open, right-click for controls");
+            wcsncpy_s(icon.szTip, Text(IDS_NATIVEGLIDEZOOMLEFTCLICKTOOPENRIGHTCLICKFORCONTROLS), _TRUNCATE);
             struct Shell
             {
                 NOTIFYICONDATAW& icon;
@@ -3072,7 +3049,7 @@ namespace
             {
                 auto icon = TrayIcon();
                 icon.uFlags = NIF_TIP | NIF_SHOWTIP;
-                wcscpy_s(icon.szTip, L"GlideZoom - left-click to open, right-click for controls");
+                wcsncpy_s(icon.szTip, Text(IDS_NATIVEGLIDEZOOMLEFTCLICKTOOPENRIGHTCLICKFORCONTROLS), _TRUNCATE);
                 if (Shell_NotifyIconW(NIM_MODIFY, &icon))
                     return true;
                 tray_.Lost();
@@ -3083,8 +3060,7 @@ namespace
         void TrayUnavailable()
         {
             Show();
-            QueueError(L"Windows could not restore GlideZoom's tray icon. The window remains available. "
-                       L"Try Minimize again after Explorer recovers; closing the window exits if the tray is still unavailable.");
+            QueueError(Text(IDS_NATIVEWINDOWSCOULDNOTRESTOREGLIDEZOOMSTRAYICONTHE));
         }
 
         void HideToTray(bool closeIfUnavailable = false)
@@ -3109,25 +3085,26 @@ namespace
         {
             if (!hwnd_ || cleaned_)
                 return;
-            const wchar_t* phase = lifecycle_.Current() == Phase::Faulted   ? L"Stopping after error" :
-                                   lifecycle_.Current() == Phase::Stopping  ? L"Stopping" :
-                                   lifecycle_.NeedsRestore()                ? L"Waiting to restore zoom" :
-                                   lifecycle_.Current() == Phase::Suspended ? L"Suspended" :
-                                   !lifecycle_.Ready()                      ? L"Paused" :
-                                   drag_.active                             ? L"Drag to zoom" :
-                                                                              L"Ready";
+            const wchar_t* phase = lifecycle_.Current() == Phase::Faulted   ? Text(IDS_NATIVESTOPPINGAFTERERROR) :
+                                   lifecycle_.Current() == Phase::Stopping  ? Text(IDS_NATIVESTOPPING) :
+                                   lifecycle_.NeedsRestore()                ? Text(IDS_NATIVEWAITINGTORESTOREZOOM) :
+                                   lifecycle_.Current() == Phase::Suspended ? Text(IDS_NATIVESUSPENDED) :
+                                   !lifecycle_.Ready()                      ? Text(IDS_NATIVEPAUSED) :
+                                   drag_.active                             ? Text(IDS_NATIVEDRAGTOZOOM) :
+                                                                              Text(IDS_NATIVEREADY);
             if (lifecycle_.Ready() && lastCopy_ && GetTickCount64() - lastCopy_ < 4000)
-                phase = L"View copied to clipboard";
-            wchar_t text[180]{};
-            const wchar_t* scope = IndependentMode() ? L"Independent monitors" : MonitorMode() ? L"Selected monitor (one view)" :
-                                                                                                 L"All monitors together";
-            swprintf_s(text, L"%ls  |  %.2fx  |  %ls%ls", phase, transform_.zoom, scope, PointerAdjustmentRequested() && input_.PointerFaulted() ? L"  |  Pointer adjustment paused" : L"");
-            statusText_.Update(reinterpret_cast<std::uintptr_t>(status_), text, [&]() { return SetWindowTextW(status_, text) != FALSE; });
+                phase = Text(IDS_NATIVEVIEWCOPIEDTOCLIPBOARD);
+            wchar_t zoomText[32]{};
+            swprintf_s(zoomText, L"%.2f", transform_.zoom);
+            const wchar_t* scope = IndependentMode() ? Text(IDS_NATIVEINDEPENDENTMONITORS) : MonitorMode() ? Text(IDS_NATIVESELECTEDMONITORONEVIEW) :
+                                                                                                 Text(IDS_NATIVEALLMONITORSTOGETHER);
+            const auto text = glide::ui::FormatResource(Text(IDS_NATIVESTATUSFORMAT), glide::ui::EnglishText(IDS_NATIVESTATUSFORMAT), std::array<std::wstring_view, 4>{ phase, zoomText, scope, PointerAdjustmentRequested() && input_.PointerFaulted() ? Text(IDS_NATIVEPOINTERADJUSTMENTPAUSED) : L"" });
+            statusText_.Update(reinterpret_cast<std::uintptr_t>(status_), text.c_str(), [&]() { return SetWindowTextW(status_, text.c_str()) != FALSE; });
             const auto touchpad = input_.TouchpadStatus();
-            const wchar_t* touchpadText = !settings_.touchpadGesture                                  ? L"Three-finger gesture: disabled" :
-                                          touchpad == glide::input::TouchpadAvailability::Detected    ? L"Three-finger gesture: contact reports detected" :
-                                          touchpad == glide::input::TouchpadAvailability::Unsupported ? L"Three-finger gesture: no supported raw contact format" :
-                                                                                                        L"Three-finger gesture: waiting for compatible contact reports";
+            const wchar_t* touchpadText = !settings_.touchpadGesture                                  ? Text(IDS_NATIVETHREEFINGERGESTUREDISABLED) :
+                                          touchpad == glide::input::TouchpadAvailability::Detected    ? Text(IDS_NATIVETHREEFINGERGESTURECONTACTREPORTSDETECTED) :
+                                          touchpad == glide::input::TouchpadAvailability::Unsupported ? Text(IDS_NATIVETHREEFINGERGESTURENOSUPPORTEDRAWCONTACTFORMAT) :
+                                                                                                        Text(IDS_NATIVETHREEFINGERGESTUREWAITINGFORCOMPATIBLECONTACTREPORTS);
             touchpadText_.Update(reinterpret_cast<std::uintptr_t>(touchpadStatus_), touchpadText, [&]() { return SetWindowTextW(touchpadStatus_, touchpadText) != FALSE; });
             if (tray_.Registered())
             {
@@ -3135,7 +3112,8 @@ namespace
                 icon.uFlags = NIF_TIP | NIF_SHOWTIP;
                 // Zoom feedback belongs in the app's status label. Keeping the
                 // active tray tooltip stable avoids poking Explorer during zoom.
-                swprintf_s(icon.szTip, L"GlideZoom - %ls", lifecycle_.Ready() ? L"Ctrl+Alt+Esc to reset" : phase);
+                const auto tip = glide::ui::FormatResource(Text(IDS_NATIVETRAYSTATUSFORMAT), glide::ui::EnglishText(IDS_NATIVETRAYSTATUSFORMAT), std::array<std::wstring_view, 1>{ lifecycle_.Ready() ? Text(IDS_NATIVECTRLALTESCTORESET) : phase });
+                wcsncpy_s(icon.szTip, tip.c_str(), _TRUNCATE);
                 bool shellFailed = false;
                 trayTip_.Update(reinterpret_cast<std::uintptr_t>(hwnd_), icon.szTip, [&]() {
                     const bool success = Shell_NotifyIconW(NIM_MODIFY, &icon) != FALSE;
@@ -3174,18 +3152,18 @@ namespace
                 tray_.EndMenu();
                 return;
             }
-            AppendMenuW(menu, MF_STRING, kShow, L"Open GlideZoom");
+            AppendMenuW(menu, MF_STRING, kShow, Text(IDS_NATIVEOPENGLIDEZOOM));
             SetMenuDefaultItem(menu, kShow, FALSE);
-            AppendMenuW(menu, MF_STRING | (IsWindowVisible(hwnd_) ? 0 : MF_GRAYED), kHide, L"Minimize to tray");
+            AppendMenuW(menu, MF_STRING | (IsWindowVisible(hwnd_) ? 0 : MF_GRAYED), kHide, Text(IDS_NATIVEMINIMIZETOTRAY));
             AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-            AppendMenuW(menu, MF_STRING, kToggle, L"Toggle zoom on current monitor\tCtrl+Alt+Z");
-            AppendMenuW(menu, MF_STRING, kDesktopToggle, L"All-monitor zoom\tCtrl+Alt+Shift+Z");
-            AppendMenuW(menu, MF_STRING, kIndependentToggle, L"Independent-monitor zoom\tCtrl+Alt+I");
-            AppendMenuW(menu, MF_STRING, kResetCommand, L"Reset all zoom to 1x\tCtrl+Alt+Esc");
-            AppendMenuW(menu, MF_STRING | (lifecycle_.Ready() ? 0 : MF_GRAYED), kCaptureCommand, L"Copy zoomed view\tCtrl+Alt+S");
-            AppendMenuW(menu, MF_STRING | (lifecycle_.Current() == Phase::Ready ? 0 : MF_CHECKED), kPause, L"Pause input controls");
+            AppendMenuW(menu, MF_STRING, kToggle, Text(IDS_NATIVETOGGLEZOOMONCURRENTMONITORCTRLALTZ));
+            AppendMenuW(menu, MF_STRING, kDesktopToggle, Text(IDS_NATIVEALLMONITORZOOMCTRLALTSHIFTZ));
+            AppendMenuW(menu, MF_STRING, kIndependentToggle, Text(IDS_NATIVEINDEPENDENTMONITORZOOMCTRLALTI));
+            AppendMenuW(menu, MF_STRING, kResetCommand, Text(IDS_NATIVERESETALLZOOMTO1XCTRLALTESC));
+            AppendMenuW(menu, MF_STRING | (lifecycle_.Ready() ? 0 : MF_GRAYED), kCaptureCommand, Text(IDS_NATIVECOPYZOOMEDVIEWCTRLALTS));
+            AppendMenuW(menu, MF_STRING | (lifecycle_.Current() == Phase::Ready ? 0 : MF_CHECKED), kPause, Text(IDS_NATIVEPAUSEINPUTCONTROLS));
             AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-            AppendMenuW(menu, MF_STRING, kExit, L"Exit GlideZoom");
+            AppendMenuW(menu, MF_STRING, kExit, Text(IDS_NATIVEEXITGLIDEZOOM));
             POINT point{};
             RECT bounds{};
             NOTIFYICONIDENTIFIER identity{};
@@ -3320,7 +3298,7 @@ namespace
                 std::wstring error;
                 pendingError_.swap(error);
                 if (!error.empty())
-                    MessageBoxW(hwnd_, error.c_str(), L"GlideZoom", MB_OK | MB_ICONWARNING);
+                    MessageBoxW(hwnd_, error.c_str(), Text(IDS_NATIVEGLIDEZOOM), MB_OK | MB_ICONWARNING);
                 return 0;
             }
             case kTray:
@@ -3545,14 +3523,14 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int)
             }
             else if (count > 1 && !quiet)
             {
-                ReportError(nullptr, L"Supported arguments: --quiet, --reset, --quit, --powertoys <runner PID>.", L"GlideZoom", MB_OK, powerToysRequested);
+                ReportError(nullptr, Text(IDS_NATIVESUPPORTEDARGUMENTSQUIETRESETQUITPOWERTOYSRUNNERPID), Text(IDS_NATIVEGLIDEZOOM), MB_OK, powerToysRequested);
                 result = 2;
             }
             else if (existing)
             {
                 if (powerToys)
                 {
-                    ReportError(nullptr, L"GlideZoom is already running. Exit that instance before enabling GlideZoom in PowerToys.", L"PowerToys GlideZoom", MB_OK | MB_ICONINFORMATION, true);
+                    ReportError(nullptr, Text(IDS_NATIVEGLIDEZOOMISALREADYRUNNINGEXITTHATINSTANCEBEFOREENABLING), Text(IDS_NATIVEPOWERTOYSGLIDEZOOM), MB_OK | MB_ICONINFORMATION, true);
                     result = 1;
                 }
                 else
@@ -3573,10 +3551,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int)
                 else if (!HasUiAccess())
                 {
                     ReportError(nullptr,
-                                L"GlideZoom needs Windows UIAccess so clicks match the magnified desktop.\n\n"
-                                L"Use a signed PowerToys build installed in a trusted Windows location such as Program Files.\n\n"
-                                L"Running the unsigned file as administrator does not replace installation.",
-                                L"GlideZoom - installation required",
+                                Text(IDS_NATIVEGLIDEZOOMNEEDSWINDOWSUIACCESSSOCLICKSMATCHTHEMAGNIFIED),
+                                Text(IDS_NATIVEGLIDEZOOMINSTALLATIONREQUIRED),
                                 MB_OK | MB_ICONINFORMATION,
                                 powerToysRequested);
                 }
@@ -3596,9 +3572,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int)
     catch (...)
     {
         app = nullptr;
-        ReportError(nullptr, L"GlideZoom stopped after an unexpected error. Its recovery process will "
-                             L"attempt to restore only a recognized GlideZoom transform. Restart from its installed folder in Explorer.",
-                    L"GlideZoom",
+        ReportError(nullptr, Text(IDS_NATIVEGLIDEZOOMSTOPPEDAFTERANUNEXPECTEDERRORITSRECOVERYPROCESS),
+                    Text(IDS_NATIVEGLIDEZOOM),
                     MB_OK | MB_ICONERROR,
                     powerToysRequested);
     }

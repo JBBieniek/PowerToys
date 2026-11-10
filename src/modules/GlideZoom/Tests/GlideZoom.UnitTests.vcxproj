@@ -69,6 +69,7 @@
     <ClCompile Include="window_fit_tests.cpp" />
     <ClCompile Include="GlideZoom.UnitTests.cpp" />
     <ClCompile Include="InputHealthTests.cpp" />
+    <ClCompile Include="DeploymentPolicyTests.cpp" />
     <ClCompile Include="MainSettingsReloadTests.cpp" />
     <ClCompile Include="MonitorReturnTests.cpp" />
     <ClCompile Include="RoutingTests.cpp" />
